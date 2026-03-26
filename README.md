@@ -15,7 +15,7 @@ Health: `GET http://localhost:3000/v1/health`
 
 1. **New Railway project** → connect this Git repo.
 2. Add **PostgreSQL** and create a **Web** service from the same repo.
-3. Web service: set **Root Directory** to `api` (monorepo).
+3. Web service: **Root Directory** empty if this repo is API-only; use `api` only inside a monorepo.
 4. Link **Postgres** so `DATABASE_URL` is injected.
 5. Set variables from [`.env.railway.example`](./.env.railway.example).
 6. Deploy: build/start/pre-deploy are defined in [`railway.toml`](./railway.toml).

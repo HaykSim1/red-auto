@@ -1,7 +1,9 @@
 # Railway config-as-code (service root = this `api/` folder).
 # https://docs.railway.com/reference/config-as-code
 #
-# Dashboard: create Postgres, link DATABASE_URL to this service, set variables from .env.railway.example.
+# Dashboard: Postgres + variables from .env.railway.example.
+# If this file is at the repo root (API-only repo), Root Directory stays empty.
+# If the repo is a monorepo, set Railway Root Directory to the folder containing this file.
 
 [build]
 buildCommand = "npm ci && npm run build"
