@@ -1,0 +1,21 @@
+# Env
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Logs / coverage
+coverage/
+*.log

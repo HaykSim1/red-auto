@@ -1,0 +1,256 @@
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between } from 'typeorm';
+import { ApiException } from '../common/exceptions/api.exception';
+import { Offer } from '../database/entities/offer.entity';
+import { PartRequest } from '../database/entities/part-request.entity';
+import { SellerApplication } from '../database/entities/seller-application.entity';
+import { User } from '../database/entities/user.entity';
+import { SellerApplicationStatus, UserRole } from '../database/enums';
+import { PushService } from '../push/push.service';
+import { PatchModerationDto } from './dto/patch-moderation.dto';
+
+function previewText(text: string | null | undefined, max: number): string {
+  const t = (text ?? '').trim();
+  if (!t) return '';
+  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+}
+
+@Injectable()
+export class AdminService {
+  constructor(
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+    @InjectRepository(PartRequest)
+    private readonly requests: Repository<PartRequest>,
+    @InjectRepository(Offer)
+    private readonly offers: Repository<Offer>,
+    @InjectRepository(SellerApplication)
+    private readonly sellerApplications: Repository<SellerApplication>,
+    private readonly push: PushService,
+  ) {}
+
+  sendTestPush(targetUserId: string) {
+    return this.push.sendTestToUser(targetUserId);
+  }
+
+  async listUsers(limit: number, offset: number) {
+    const [rows, total] = await this.users.findAndCount({
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return {
+      total,
+      items: rows.map((u) => ({
+        id: u.id,
+        phone: u.phone,
+        role: u.role,
+        blocked_at: u.blockedAt?.toISOString() ?? null,
+        display_name: u.displayName,
+        created_at: u.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async blockUser(id: string): Promise<void> {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u) {
+      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+    }
+    u.blockedAt = new Date();
+    await this.users.save(u);
+  }
+
+  async unblockUser(id: string): Promise<void> {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u) {
+      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+    }
+    u.blockedAt = null;
+    await this.users.save(u);
+  }
+
+  async listRequests(limit: number, offset: number) {
+    const [rows, total] = await this.requests.findAndCount({
+      relations: { author: true },
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return {
+      total,
+      items: rows.map((r) => ({
+        id: r.id,
+        author_id: r.author.id,
+        author_display_name: r.author.displayName,
+        title: previewText(r.description, 120) || '(No description)',
+        description: r.description,
+        status: r.status,
+        moderation_state: r.moderationState,
+        created_at: r.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async patchRequest(id: string, dto: PatchModerationDto) {
+    const r = await this.requests.findOne({ where: { id } });
+    if (!r) {
+      throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+    }
+    r.moderationState = dto.moderation_state;
+    await this.requests.save(r);
+    return { id: r.id, moderation_state: r.moderationState };
+  }
+
+  async listOffers(limit: number, offset: number) {
+    const [rows, total] = await this.offers.findAndCount({
+      relations: { request: true, seller: true },
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return {
+      total,
+      items: rows.map((o) => ({
+        id: o.id,
+        request_id: o.request.id,
+        seller_id: o.seller.id,
+        title: `${o.seller.displayName?.trim() || o.seller.phone} · ${o.priceAmount} AMD`,
+        request_summary: previewText(o.request.description, 100) || '(No description)',
+        seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        moderation_state: o.moderationState,
+        price_amount: o.priceAmount,
+        created_at: o.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async patchOffer(id: string, dto: PatchModerationDto) {
+    const o = await this.offers.findOne({ where: { id } });
+    if (!o) {
+      throw new ApiException('not_found', 'Offer not found.', HttpStatus.NOT_FOUND);
+    }
+    o.moderationState = dto.moderation_state;
+    await this.offers.save(o);
+    return { id: o.id, moderation_state: o.moderationState };
+  }
+
+  async listSellerApplications(
+    status: SellerApplicationStatus | undefined,
+    limit: number,
+    offset: number,
+  ) {
+    const qb = this.sellerApplications
+      .createQueryBuilder('a')
+      .leftJoinAndSelect('a.user', 'u')
+      .orderBy('a.createdAt', 'DESC')
+      .take(Math.min(limit, 100))
+      .skip(offset);
+    if (status) {
+      qb.andWhere('a.status = :status', { status });
+    }
+    const [rows, total] = await qb.getManyAndCount();
+    return {
+      total,
+      items: rows.map((a) => ({
+        id: a.id,
+        user_id: a.user.id,
+        user_phone: a.user.phone,
+        status: a.status,
+        shop_name: a.shopName,
+        shop_address: a.shopAddress,
+        shop_phone: a.shopPhone,
+        logo_storage_key: a.logoStorageKey,
+        rejection_reason: a.rejectionReason,
+        reviewed_at: a.reviewedAt?.toISOString() ?? null,
+        created_at: a.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async approveSellerApplication(id: string) {
+    await this.sellerApplications.manager.transaction(async (em) => {
+      const app = await em.findOne(SellerApplication, {
+        where: { id },
+        relations: { user: true },
+      });
+      if (!app) {
+        throw new ApiException(
+          'not_found',
+          'Seller application not found.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      if (app.status !== SellerApplicationStatus.PENDING) {
+        throw new ApiException(
+          'seller_application_not_pending',
+          'Application is not pending.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const u = app.user;
+      if (u.role !== UserRole.USER) {
+        throw new ApiException(
+          'seller_application_invalid_user',
+          'User is not a buyer; cannot approve.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      app.status = SellerApplicationStatus.APPROVED;
+      app.reviewedAt = new Date();
+      app.rejectionReason = null;
+      await em.save(app);
+      u.role = UserRole.SELLER;
+      u.shopName = app.shopName;
+      u.shopAddress = app.shopAddress;
+      u.shopLogoStorageKey = app.logoStorageKey;
+      u.sellerPhone = app.shopPhone;
+      await em.save(u);
+    });
+    return { ok: true };
+  }
+
+  async rejectSellerApplication(id: string, reason: string) {
+    const app = await this.sellerApplications.findOne({
+      where: { id },
+      relations: { user: true },
+    });
+    if (!app) {
+      throw new ApiException(
+        'not_found',
+        'Seller application not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (app.status !== SellerApplicationStatus.PENDING) {
+      throw new ApiException(
+        'seller_application_not_pending',
+        'Application is not pending.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    app.status = SellerApplicationStatus.REJECTED;
+    app.rejectionReason = reason.trim();
+    app.reviewedAt = new Date();
+    await this.sellerApplications.save(app);
+    return { ok: true };
+  }
+
+  async statsSummary(from: Date, to: Date) {
+    const users = await this.users.count({
+      where: { createdAt: Between(from, to) },
+    });
+    const requests = await this.requests.count({
+      where: { createdAt: Between(from, to) },
+    });
+    const offers = await this.offers.count({
+      where: { createdAt: Between(from, to) },
+    });
+    return {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      counts: { users, requests, offers },
+    };
+  }
+}

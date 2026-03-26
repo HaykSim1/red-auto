@@ -1,0 +1,15 @@
+# Railway config-as-code (service root = this `api/` folder).
+# https://docs.railway.com/reference/config-as-code
+#
+# Dashboard: create Postgres, link DATABASE_URL to this service, set variables from .env.railway.example.
+
+[build]
+buildCommand = "npm ci && npm run build"
+watchPatterns = ["src/**", "package.json", "package-lock.json", "tsconfig*.json", "nest-cli.json"]
+
+[deploy]
+startCommand = "npm run start:prod"
+preDeployCommand = ["node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js"]
+healthcheckPath = "/v1/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
