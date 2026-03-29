@@ -60,6 +60,10 @@ export const envSchema = z.object({
   SMS_HTTP_HEADERS_JSON: z.string().optional(),
   /** Allow `npm run seed` when NODE_ENV=production (dangerous; off by default). */
   ALLOW_DANGEROUS_SEED: boolFromEnv,
+  /** Admin email for seed (used by POST /v1/admin/auth/login). */
+  SEED_ADMIN_EMAIL: z.string().email().optional().default('admin@zapchast.local'),
+  /** Admin password for seed (plain-text; bcrypt-hashed before storing). */
+  SEED_ADMIN_PASSWORD: z.string().min(8).optional().default('changeme123'),
   /**
    * If true, allow SMS_PROVIDER=dev (console log OTP only) when NODE_ENV=production.
    * For staging / demos only — never enable on a public production API with real users.

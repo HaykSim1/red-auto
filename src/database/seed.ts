@@ -1,13 +1,18 @@
 import 'dotenv/config';
+import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import dataSource from './data-source';
 import { User } from './entities/user.entity';
 import { UserRole } from './enums';
 
+const BCRYPT_ROUNDS = 10;
+
 type SeedUserSpec = {
   phone: string;
   role: UserRole;
   displayName: string;
+  email?: string | null;
+  passwordHash?: string | null;
   sellerPhone?: string | null;
   sellerTelegram?: string | null;
 };
@@ -21,6 +26,8 @@ async function upsertUser(
   if (existing) {
     existing.role = spec.role;
     existing.displayName = spec.displayName;
+    if (spec.email !== undefined) existing.email = spec.email ?? null;
+    if (spec.passwordHash !== undefined) existing.passwordHash = spec.passwordHash ?? null;
     existing.sellerPhone = spec.sellerPhone ?? null;
     existing.sellerTelegram = spec.sellerTelegram ?? null;
     await repo.save(existing);
@@ -34,6 +41,8 @@ async function upsertUser(
       phone: spec.phone,
       role: spec.role,
       displayName: spec.displayName,
+      email: spec.email ?? null,
+      passwordHash: spec.passwordHash ?? null,
       sellerPhone: spec.sellerPhone ?? null,
       sellerTelegram: spec.sellerTelegram ?? null,
     }),
@@ -70,6 +79,10 @@ async function seed(): Promise<void> {
   const users = dataSource.getRepository(User);
 
   const adminPhone = process.env.SEED_ADMIN_PHONE ?? '+37400000000';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@zapchast.local';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'changeme123';
+  const adminPasswordHash = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
+
   const clientPhone = process.env.SEED_CLIENT_PHONE ?? '+37400000001';
 
   if (seedAll) {
@@ -92,6 +105,8 @@ async function seed(): Promise<void> {
       phone: adminPhone,
       role: UserRole.ADMIN,
       displayName: 'Dev admin',
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
       sellerPhone: null,
       sellerTelegram: null,
     },

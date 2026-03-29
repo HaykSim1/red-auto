@@ -53,6 +53,12 @@ export class User {
   @Column({ type: 'text', name: 'shop_logo_storage_key', nullable: true })
   shopLogoStorageKey: string | null;
 
+  @Column({ type: 'text', unique: true, nullable: true })
+  email: string | null;
+
+  @Column({ type: 'text', name: 'password_hash', nullable: true })
+  passwordHash: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

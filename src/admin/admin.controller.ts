@@ -11,13 +11,22 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { SellerApplicationStatus, UserRole } from '../database/enums';
 import { RejectSellerApplicationDto } from '../seller-applications/dto/reject-seller-application.dto';
+import { AuthOtpVerifyResponseDto } from '../common/dto/responses.dto';
 import { AdminService } from './admin.service';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { PushTestDto } from './dto/push-test.dto';
 
@@ -27,6 +36,14 @@ import { PushTestDto } from './dto/push-test.dto';
 @Controller('admin')
 export class AdminController {
   constructor(private readonly admin: AdminService) {}
+
+  @Public()
+  @Post('auth/login')
+  @ApiOperation({ summary: 'Admin email + password login' })
+  @ApiCreatedResponse({ type: AuthOtpVerifyResponseDto })
+  adminLogin(@Body() dto: AdminLoginDto) {
+    return this.admin.adminLogin(dto.email, dto.password);
+  }
 
   @Get('users')
   @ApiOperation({ summary: 'List users' })

@@ -1,7 +1,10 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
 import { Repository, Between } from 'typeorm';
 import { ApiException } from '../common/exceptions/api.exception';
+import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
@@ -28,7 +31,62 @@ export class AdminService {
     @InjectRepository(SellerApplication)
     private readonly sellerApplications: Repository<SellerApplication>,
     private readonly push: PushService,
+    private readonly jwt: JwtService,
   ) {}
+
+  async adminLogin(email: string, password: string) {
+    const user = await this.users.findOne({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user || user.role !== UserRole.ADMIN || !user.passwordHash) {
+      throw new ApiException(
+        'invalid_credentials',
+        'Invalid email or password.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      throw new ApiException(
+        'invalid_credentials',
+        'Invalid email or password.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (user.blockedAt) {
+      throw new ApiException(
+        'user_blocked',
+        'User is blocked.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const payload: JwtUserPayload = {
+      sub: user.id,
+      role: user.role,
+      phone_verified: true,
+    };
+
+    const access_token = await this.jwt.signAsync({
+      sub: payload.sub,
+      role: payload.role,
+      phone_verified: payload.phone_verified,
+    });
+
+    return {
+      access_token,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+        display_name: user.displayName,
+        preferred_locale: user.preferredLocale,
+      },
+    };
+  }
 
   sendTestPush(targetUserId: string) {
     return this.push.sendTestToUser(targetUserId);
