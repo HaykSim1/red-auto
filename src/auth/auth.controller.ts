@@ -1,6 +1,7 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AuthOtpVerifyResponseDto } from '../common/dto/responses.dto';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
@@ -31,6 +32,7 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({ summary: 'Verify OTP and receive JWT' })
+  @ApiCreatedResponse({ type: AuthOtpVerifyResponseDto })
   verify(@Body() dto: OtpVerifyDto) {
     return this.auth.verifyOtp(dto.phone.trim(), dto.code.trim());
   }

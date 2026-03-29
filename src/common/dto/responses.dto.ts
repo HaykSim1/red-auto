@@ -35,6 +35,21 @@ export class SellerApplicationMeDto {
   @ApiProperty() created_at: string;
 }
 
+/** User payload returned with POST /auth/otp/verify (subset of profile). */
+export class AuthOtpVerifyUserDto {
+  @ApiProperty() id: string;
+  @ApiProperty() phone: string;
+  @ApiProperty({ enum: ['user', 'seller', 'admin'] }) role: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) display_name: string | null;
+  @ApiPropertyOptional({ type: String, enum: ['hy', 'ru', 'en'], nullable: true })
+  preferred_locale: string | null;
+}
+
+export class AuthOtpVerifyResponseDto {
+  @ApiProperty() access_token: string;
+  @ApiProperty({ type: () => AuthOtpVerifyUserDto }) user: AuthOtpVerifyUserDto;
+}
+
 export class MeResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() phone: string;

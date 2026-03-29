@@ -113,9 +113,10 @@ export class AuthService {
       this.config.get<boolean>('ADMIN_OTP_BOOTSTRAP') === true;
     const allowAdminPromote =
       nodeEnv !== 'production' || localAdminOtp;
+    const phonesMatchSeed = user.phone.trim() === adminPhone;
     if (
       allowAdminPromote &&
-      user.phone.trim() === adminPhone &&
+      phonesMatchSeed &&
       user.role === UserRole.USER
     ) {
       user.role = UserRole.ADMIN;
@@ -130,9 +131,10 @@ export class AuthService {
       );
     }
 
+    const resolvedRole = user.role ?? UserRole.USER;
     const payload: JwtUserPayload = {
       sub: user.id,
-      role: user.role,
+      role: resolvedRole,
       phone_verified: true,
     };
 
@@ -149,10 +151,11 @@ export class AuthService {
   }
 
   userSummary(user: User) {
+    const role = user.role ?? UserRole.USER;
     return {
       id: user.id,
       phone: user.phone,
-      role: user.role,
+      role,
       display_name: user.displayName,
       preferred_locale: user.preferredLocale,
     };
