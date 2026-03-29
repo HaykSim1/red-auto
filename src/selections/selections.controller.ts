@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SelectionResponseDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { CreateSelectionDto } from './dto/create-selection.dto';
@@ -16,6 +17,7 @@ export class SelectionsController {
     summary:
       'Buyer: mark deal complete (closes request when seller has also confirmed)',
   })
+  @ApiOkResponse({ type: SelectionResponseDto })
   create(
     @Param('requestId', ParseUUIDPipe) requestId: string,
     @CurrentUser() u: JwtUserPayload,
@@ -26,6 +28,7 @@ export class SelectionsController {
 
   @Get()
   @ApiOperation({ summary: 'Get selection + seller contact (author only)' })
+  @ApiOkResponse({ type: SelectionResponseDto })
   get(
     @Param('requestId', ParseUUIDPipe) requestId: string,
     @CurrentUser() u: JwtUserPayload,

@@ -8,7 +8,8 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { VehicleDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
@@ -23,18 +24,21 @@ export class VehiclesController {
 
   @Get()
   @ApiOperation({ summary: 'List saved vehicles' })
+  @ApiOkResponse({ type: [VehicleDto] })
   list(@CurrentUser() u: JwtUserPayload) {
     return this.vehicles.list(u.sub);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create vehicle' })
+  @ApiCreatedResponse({ type: VehicleDto })
   create(@CurrentUser() u: JwtUserPayload, @Body() dto: CreateVehicleDto) {
     return this.vehicles.create(u.sub, dto);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get vehicle' })
+  @ApiOkResponse({ type: VehicleDto })
   get(
     @CurrentUser() u: JwtUserPayload,
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,6 +48,7 @@ export class VehiclesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update vehicle' })
+  @ApiOkResponse({ type: VehicleDto })
   patch(
     @CurrentUser() u: JwtUserPayload,
     @Param('id', ParseUUIDPipe) id: string,

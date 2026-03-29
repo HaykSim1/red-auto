@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
+import { SellerRating } from '../database/entities/seller-rating.entity';
 import { User } from '../database/entities/user.entity';
 import {
   ModerationState,
@@ -26,6 +27,25 @@ export type FeaturedShopItem = {
   rating_count: number;
 };
 
+export type PublicShopReview = {
+  id: string;
+  score: number;
+  comment: string | null;
+  created_at: string;
+};
+
+/** Public shop profile (no seller phone / messengers). */
+export type PublicShopDetail = {
+  id: string;
+  shop_name: string;
+  shop_logo_storage_key: string | null;
+  /** Seller shop address from profile, exposed as description until a dedicated bio field exists. */
+  description: string | null;
+  rating_avg: number | null;
+  rating_count: number;
+  reviews: PublicShopReview[];
+};
+
 @Injectable()
 export class HomeService {
   constructor(
@@ -35,6 +55,8 @@ export class HomeService {
     private readonly offers: Repository<Offer>,
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    @InjectRepository(SellerRating)
+    private readonly sellerRatings: Repository<SellerRating>,
   ) {}
 
   async getSummary(userId: string, role: UserRole): Promise<HomeSummaryResponse> {
@@ -109,5 +131,64 @@ export class HomeService {
           : null,
       rating_count: row.rating_count ?? 0,
     }));
+  }
+
+  async getPublicShopDetail(sellerId: string): Promise<PublicShopDetail> {
+    const rows = (await this.users.query(
+      `
+      SELECT u.id,
+             u.shop_name AS shop_name,
+             u.shop_address AS shop_address,
+             u.shop_logo_storage_key AS shop_logo_storage_key,
+             agg.avg_score AS rating_avg,
+             COALESCE(agg.rating_count, 0)::int AS rating_count
+      FROM users u
+      LEFT JOIN seller_rating_aggregate agg ON agg.seller_id = u.id
+      WHERE u.id = $1
+        AND u.role = $2
+        AND u.shop_name IS NOT NULL
+        AND btrim(u.shop_name) <> ''
+      `,
+      [sellerId, UserRole.SELLER],
+    )) as Array<{
+      id: string;
+      shop_name: string;
+      shop_address: string | null;
+      shop_logo_storage_key: string | null;
+      rating_avg: string | null;
+      rating_count: number;
+    }>;
+
+    const row = rows[0];
+    if (!row) {
+      throw new NotFoundException();
+    }
+
+    const addr = row.shop_address?.trim() ?? '';
+    const description = addr.length > 0 ? addr : null;
+
+    const reviewRows = await this.sellerRatings.find({
+      where: { seller: { id: sellerId } },
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+
+    return {
+      id: row.id,
+      shop_name: row.shop_name,
+      shop_logo_storage_key: row.shop_logo_storage_key,
+      description,
+      rating_avg:
+        row.rating_avg != null && row.rating_avg !== ''
+          ? Number(row.rating_avg)
+          : null,
+      rating_count: row.rating_count ?? 0,
+      reviews: reviewRows.map((r) => ({
+        id: r.id,
+        score: r.score,
+        comment: r.comment,
+        created_at: r.createdAt.toISOString(),
+      })),
+    };
   }
 }

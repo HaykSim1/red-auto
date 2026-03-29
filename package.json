@@ -24,6 +24,7 @@
     "migration:show": "npm run build && npm run typeorm -- migration:show -d dist/database/data-source.js",
     "seed": "ts-node -r dotenv/config src/database/seed.ts",
     "db:wipe": "ts-node -r dotenv/config src/database/wipe-data.ts",
+    "db:reset": "npm run db:wipe && npm run migration:run && npm run seed",
     "smoke:health": "node scripts/smoke-health.mjs"
   },
   "dependencies": {

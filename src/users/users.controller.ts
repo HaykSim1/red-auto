@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpStatus, Patch } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { MeResponseDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ApiException } from '../common/exceptions/api.exception';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
@@ -14,6 +15,7 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'Current user profile' })
+  @ApiOkResponse({ type: MeResponseDto })
   async me(@CurrentUser() jwt: JwtUserPayload) {
     const me = await this.users.getMe(jwt.sub);
     if (!me) {
@@ -28,6 +30,7 @@ export class UsersController {
 
   @Patch()
   @ApiOperation({ summary: 'Update profile' })
+  @ApiOkResponse({ type: MeResponseDto })
   patchMe(@CurrentUser() jwt: JwtUserPayload, @Body() dto: UpdateMeDto) {
     return this.users.updateMe(jwt.sub, dto);
   }

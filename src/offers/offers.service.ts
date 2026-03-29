@@ -22,6 +22,12 @@ import { PatchOfferDto } from './dto/patch-offer.dto';
 /** Max “stuck” offers per seller before blocking new offers (see docs). */
 export const STUCK_OFFER_LIMIT = 3;
 
+function normalizeVariantLabel(v?: string | null): string | null {
+  if (v == null) return null;
+  const t = v.trim();
+  return t.length ? t : null;
+}
+
 export type AuthorOfferListMask = {
   activeAcceptanceOfferId: string | null;
   chosenOfferId: string | null;
@@ -429,28 +435,23 @@ export class OffersService {
       );
     }
 
-    const existingForSeller = await this.offers.findOne({
+    const existingForSeller = await this.offers.find({
       where: {
         request: { id: requestId },
         seller: { id: sellerId },
       },
       relations: { request: { author: true }, photos: true, seller: true },
+      order: { createdAt: 'ASC' },
     });
-    if (existingForSeller) {
-      if (
-        existingForSeller.interactionState ===
+    if (
+      existingForSeller.length === 1 &&
+      existingForSeller[0].interactionState ===
         OfferInteractionState.MUTUALLY_CANCELLED
-      ) {
-        return this.reviseOfferAfterMutualCancel(
-          existingForSeller,
-          dto,
-          sellerId,
-        );
-      }
-      throw new ApiException(
-        'offer_duplicate',
-        'You already submitted an offer for this request.',
-        HttpStatus.CONFLICT,
+    ) {
+      return this.reviseOfferAfterMutualCancel(
+        existingForSeller[0],
+        dto,
+        sellerId,
       );
     }
 
@@ -472,24 +473,12 @@ export class OffersService {
       condition: dto.condition,
       delivery: dto.delivery,
       description: dto.description,
+      variantLabel: normalizeVariantLabel(dto.variant_label),
       moderationState: ModerationState.VISIBLE,
       interactionState: OfferInteractionState.NONE,
     });
 
-    let saved: Offer;
-    try {
-      saved = await this.offers.save(offer);
-    } catch (e) {
-      const err = e as { code?: string };
-      if (err.code === '23505') {
-        throw new ApiException(
-          'offer_duplicate',
-          'You already submitted an offer for this request.',
-          HttpStatus.CONFLICT,
-        );
-      }
-      throw e;
-    }
+    const saved = await this.offers.save(offer);
 
     if (dto.photo_storage_keys?.length) {
       await this.offerPhotos.save(
@@ -528,6 +517,7 @@ export class OffersService {
     existing.condition = dto.condition;
     existing.delivery = dto.delivery;
     existing.description = dto.description;
+    existing.variantLabel = normalizeVariantLabel(dto.variant_label);
     existing.moderationState = ModerationState.VISIBLE;
     existing.interactionState = OfferInteractionState.NONE;
     existing.buyerAcceptedAt = null;
@@ -624,6 +614,9 @@ export class OffersService {
       .andWhere('o.moderation_state = :vis', {
         vis: ModerationState.VISIBLE,
       })
+      .andWhere('o.interaction_state != :mc', {
+        mc: OfferInteractionState.MUTUALLY_CANCELLED,
+      })
       .orderBy('o.createdAt', 'ASC');
 
     if (selection && !includeHidden) {
@@ -688,6 +681,8 @@ export class OffersService {
     if (dto.condition !== undefined) offer.condition = dto.condition;
     if (dto.delivery !== undefined) offer.delivery = dto.delivery;
     if (dto.description !== undefined) offer.description = dto.description;
+    if (dto.variant_label !== undefined)
+      offer.variantLabel = normalizeVariantLabel(dto.variant_label);
 
     await this.offers.save(offer);
 
@@ -774,6 +769,7 @@ export class OffersService {
       condition: o.condition,
       delivery: o.delivery,
       description: o.description,
+      variant_label: o.variantLabel,
       moderation_state: o.moderationState,
       created_at: o.createdAt.toISOString(),
       photos: (o.photos ?? []).map((p) => ({
@@ -801,52 +797,56 @@ export class OffersService {
     return o;
   }
 
-  /** Seller's own offer on an open request (for GET /requests/:id/public). */
-  async getSellerOfferOnRequest(
+  /** Seller's own offers on an open request (for GET /requests/:id/public). */
+  async getSellerOffersOnRequest(
     requestId: string,
     sellerId: string,
   ): Promise<
-    | (ReturnType<OffersService['serializeOffer']> & {
+    Array<
+      ReturnType<OffersService['serializeOffer']> & {
         buyer_cancel_pending_ack: boolean;
         deal_active: boolean;
         buyer_marked_complete: boolean;
         seller_marked_complete: boolean;
         buyer_marked_cancel: boolean;
         seller_marked_cancel: boolean;
-      })
-    | null
+      }
+    >
   > {
-    const o = await this.offers.findOne({
+    const list = await this.offers.find({
       where: {
         request: { id: requestId },
         seller: { id: sellerId },
         moderationState: ModerationState.VISIBLE,
       },
       relations: { seller: true, photos: true, request: true },
+      order: { createdAt: 'ASC' },
     });
-    if (!o) return null;
+    if (!list.length) return [];
 
     const partReq = await this.requests.findOne({
       where: { id: requestId },
       relations: { activeAcceptanceOffer: true },
     });
     const activeId = partReq?.activeAcceptanceOffer?.id ?? null;
-    const deal_active =
-      activeId === o.id &&
-      o.interactionState === OfferInteractionState.CONTACT_REVEALED;
 
     const agMap = await this.loadAggregates([sellerId]);
-    const base = this.serializeOffer(o, sellerId, agMap, requestId);
-    return {
-      ...base,
-      buyer_cancel_pending_ack:
-        o.interactionState === OfferInteractionState.BUYER_CANCELLED &&
-        !o.sellerAcknowledgedAt,
-      deal_active,
-      buyer_marked_complete: Boolean(o.buyerDealCompleteAt),
-      seller_marked_complete: Boolean(o.sellerDealCompleteAt),
-      buyer_marked_cancel: Boolean(o.buyerDealCancelAt),
-      seller_marked_cancel: Boolean(o.sellerDealCancelAt),
-    };
+    return list.map((o) => {
+      const deal_active =
+        activeId === o.id &&
+        o.interactionState === OfferInteractionState.CONTACT_REVEALED;
+      const base = this.serializeOffer(o, sellerId, agMap, requestId);
+      return {
+        ...base,
+        buyer_cancel_pending_ack:
+          o.interactionState === OfferInteractionState.BUYER_CANCELLED &&
+          !o.sellerAcknowledgedAt,
+        deal_active,
+        buyer_marked_complete: Boolean(o.buyerDealCompleteAt),
+        seller_marked_complete: Boolean(o.sellerDealCompleteAt),
+        buyer_marked_cancel: Boolean(o.buyerDealCancelAt),
+        seller_marked_cancel: Boolean(o.sellerDealCancelAt),
+      };
+    });
   }
 }

@@ -6,7 +6,6 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 import {
@@ -20,7 +19,6 @@ import { PartRequest } from './part-request.entity';
 import { User } from './user.entity';
 
 @Entity('offers')
-@Unique('UQ_offers_request_seller', ['request', 'seller'])
 export class Offer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -55,6 +53,9 @@ export class Offer {
 
   @Column({ type: 'text' })
   description: string;
+
+  @Column({ type: 'text', name: 'variant_label', nullable: true })
+  variantLabel: string | null;
 
   @Column({
     type: 'enum',

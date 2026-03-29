@@ -8,7 +8,8 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { PaginatedRequestListDto, RequestAuthorDetailDto, RequestPublicDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { MineListScope, MineQueryDto } from './dto/mine-query.dto';
@@ -35,6 +36,7 @@ export class RequestsController {
     summary:
       'My requests (paginated). scope=active (default): open only; scope=history: closed and cancelled.',
   })
+  @ApiOkResponse({ type: PaginatedRequestListDto })
   mine(@CurrentUser() u: JwtUserPayload, @Query() q: MineQueryDto) {
     return this.requests.listMine(
       u.sub,
@@ -49,6 +51,7 @@ export class RequestsController {
     summary:
       'Open requests feed (excludes own). Seller or admin only; buyers receive 403.',
   })
+  @ApiOkResponse({ type: PaginatedRequestListDto })
   open(
     @CurrentUser() u: JwtUserPayload,
     @Query() q: PaginationQueryDto,
@@ -60,6 +63,7 @@ export class RequestsController {
   @ApiOperation({
     summary: 'Buyer: accept offer (reveals seller contact; lock until deal or cancel)',
   })
+  @ApiOkResponse({ type: RequestAuthorDetailDto })
   async acceptOffer(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() u: JwtUserPayload,
@@ -88,6 +92,7 @@ export class RequestsController {
     summary:
       'Seller view: one open visible request. Seller or admin only; buyers receive 403.',
   })
+  @ApiOkResponse({ type: RequestPublicDto })
   publicDetail(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() u: JwtUserPayload,
@@ -97,6 +102,7 @@ export class RequestsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Author: request detail with offers' })
+  @ApiOkResponse({ type: RequestAuthorDetailDto })
   detail(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() u: JwtUserPayload,
@@ -109,6 +115,7 @@ export class RequestsController {
 
   @Post()
   @ApiOperation({ summary: 'Create request' })
+  @ApiCreatedResponse({ type: RequestAuthorDetailDto })
   create(@CurrentUser() u: JwtUserPayload, @Body() dto: CreateRequestDto) {
     return this.requests.create(u.sub, dto);
   }

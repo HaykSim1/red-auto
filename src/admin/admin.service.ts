@@ -112,17 +112,25 @@ export class AdminService {
     });
     return {
       total,
-      items: rows.map((o) => ({
-        id: o.id,
-        request_id: o.request.id,
-        seller_id: o.seller.id,
-        title: `${o.seller.displayName?.trim() || o.seller.phone} · ${o.priceAmount} AMD`,
-        request_summary: previewText(o.request.description, 100) || '(No description)',
-        seller_label: o.seller.displayName?.trim() || o.seller.phone,
-        moderation_state: o.moderationState,
-        price_amount: o.priceAmount,
-        created_at: o.createdAt.toISOString(),
-      })),
+      items: rows.map((o) => {
+        const label = o.variantLabel?.trim();
+        const priceBit = `${o.priceAmount} AMD`;
+        const title = label
+          ? `${o.seller.displayName?.trim() || o.seller.phone} · ${label} · ${priceBit}`
+          : `${o.seller.displayName?.trim() || o.seller.phone} · ${priceBit}`;
+        return {
+          id: o.id,
+          request_id: o.request.id,
+          seller_id: o.seller.id,
+          title,
+          request_summary: previewText(o.request.description, 100) || '(No description)',
+          seller_label: o.seller.displayName?.trim() || o.seller.phone,
+          moderation_state: o.moderationState,
+          price_amount: o.priceAmount,
+          variant_label: o.variantLabel,
+          created_at: o.createdAt.toISOString(),
+        };
+      }),
     };
   }
 

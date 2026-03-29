@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { HomeSummaryResponseDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { HomeService } from './home.service';
@@ -12,6 +13,7 @@ export class HomeController {
 
   @Get('summary')
   @ApiOperation({ summary: 'Dashboard counters (role-aware)' })
+  @ApiOkResponse({ type: HomeSummaryResponseDto })
   summary(@CurrentUser() u: JwtUserPayload) {
     return this.home.getSummary(u.sub, u.role);
   }

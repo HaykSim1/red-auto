@@ -222,8 +222,8 @@ export class RequestsService {
       throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
     }
     const base = this.serializePublic(r);
-    const my_offer = await this.offers.getSellerOfferOnRequest(id, userId);
-    return { ...base, my_offer };
+    const my_offers = await this.offers.getSellerOffersOnRequest(id, userId);
+    return { ...base, my_offers };
   }
 
   async patchAuthor(id: string, userId: string, dto: PatchRequestDto) {

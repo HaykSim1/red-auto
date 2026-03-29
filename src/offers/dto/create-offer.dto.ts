@@ -37,6 +37,15 @@ export class CreateOfferDto {
   @MaxLength(4000)
   description: string;
 
+  @ApiPropertyOptional({
+    description: 'Optional brand / supplier label (e.g. Bosch, OEM)',
+    maxLength: 120,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  variant_label?: string;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
