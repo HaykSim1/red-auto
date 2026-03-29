@@ -38,6 +38,7 @@ export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
   @Public()
+  @Roles()
   @Post('auth/login')
   @ApiOperation({ summary: 'Admin email + password login' })
   @ApiCreatedResponse({ type: AuthOtpVerifyResponseDto })
