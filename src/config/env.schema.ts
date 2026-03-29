@@ -60,6 +60,11 @@ export const envSchema = z.object({
   SMS_HTTP_HEADERS_JSON: z.string().optional(),
   /** Allow `npm run seed` when NODE_ENV=production (dangerous; off by default). */
   ALLOW_DANGEROUS_SEED: boolFromEnv,
+  /**
+   * If true, allow SMS_PROVIDER=dev (console log OTP only) when NODE_ENV=production.
+   * For staging / demos only — never enable on a public production API with real users.
+   */
+  ALLOW_LOG_ONLY_SMS_IN_PRODUCTION: boolFromEnv,
 })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {
@@ -70,11 +75,14 @@ export const envSchema = z.object({
           path: ['OTP_DEV_MODE'],
         });
       }
-      if (data.SMS_PROVIDER === 'dev') {
+      if (
+        data.SMS_PROVIDER === 'dev' &&
+        data.ALLOW_LOG_ONLY_SMS_IN_PRODUCTION !== true
+      ) {
         ctx.addIssue({
           code: 'custom',
           message:
-            'SMS_PROVIDER must be twilio or http in production (dev only logs OTP)',
+            'SMS_PROVIDER must be twilio or http in production (set ALLOW_LOG_ONLY_SMS_IN_PRODUCTION=true only for staging to use log-only OTP)',
           path: ['SMS_PROVIDER'],
         });
       }
