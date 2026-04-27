@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MultiOfferPerSellerVariantLabel1742500000000
-  implements MigrationInterface
-{
+export class MultiOfferPerSellerVariantLabel1742500000000 implements MigrationInterface {
   name = 'MultiOfferPerSellerVariantLabel1742500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -15,9 +13,7 @@ export class MultiOfferPerSellerVariantLabel1742500000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "offers" DROP COLUMN "variant_label"`,
-    );
+    await queryRunner.query(`ALTER TABLE "offers" DROP COLUMN "variant_label"`);
     await queryRunner.query(
       `ALTER TABLE "offers" ADD CONSTRAINT "UQ_offers_request_seller" UNIQUE ("request_id", "seller_id")`,
     );

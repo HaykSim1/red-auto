@@ -33,7 +33,7 @@ function configureApp(app: INestApplication): void {
   app.useGlobalFilters(new GlobalExceptionFilter());
 }
 
-describe('Zapchast API (e2e)', () => {
+describe('Red Auto API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {

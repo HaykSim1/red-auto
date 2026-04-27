@@ -8,8 +8,19 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PaginatedRequestListDto, RequestAuthorDetailDto, RequestPublicDto } from '../common/dto/responses.dto';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
+  PaginatedRequestListDto,
+  RequestAuthorDetailDto,
+  RequestMineStatsResponseDto,
+  RequestPublicDto,
+} from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { MineListScope, MineQueryDto } from './dto/mine-query.dto';
@@ -46,22 +57,29 @@ export class RequestsController {
     );
   }
 
+  @Get('mine/stats')
+  @ApiOperation({
+    summary: 'Total offer count across my open requests (e.g. tab badge)',
+  })
+  @ApiOkResponse({ type: RequestMineStatsResponseDto })
+  mineStats(@CurrentUser() u: JwtUserPayload) {
+    return this.requests.mineOfferStats(u.sub);
+  }
+
   @Get('open')
   @ApiOperation({
     summary:
       'Open requests feed (excludes own). Seller or admin only; buyers receive 403.',
   })
   @ApiOkResponse({ type: PaginatedRequestListDto })
-  open(
-    @CurrentUser() u: JwtUserPayload,
-    @Query() q: PaginationQueryDto,
-  ) {
+  open(@CurrentUser() u: JwtUserPayload, @Query() q: PaginationQueryDto) {
     return this.requests.listOpen(u.sub, u.role, q.limit, q.cursor);
   }
 
   @Post(':id/accept-offer')
   @ApiOperation({
-    summary: 'Buyer: accept offer (reveals seller contact; lock until deal or cancel)',
+    summary:
+      'Buyer: accept offer (reveals seller contact; lock until deal or cancel)',
   })
   @ApiOkResponse({ type: RequestAuthorDetailDto })
   async acceptOffer(
@@ -108,8 +126,7 @@ export class RequestsController {
     @CurrentUser() u: JwtUserPayload,
     @Query('include_hidden') include_hidden?: string,
   ) {
-    const includeHidden =
-      include_hidden === 'true' || include_hidden === '1';
+    const includeHidden = include_hidden === 'true' || include_hidden === '1';
     return this.requests.getAuthorDetail(id, u.sub, includeHidden);
   }
 

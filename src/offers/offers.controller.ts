@@ -11,8 +11,15 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginatedSellerOfferHistoryDto } from '../common/dto/responses.dto';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { CancelAcceptedOfferDto } from '../requests/dto/cancel-accepted-offer.dto';
 import { SelectionsService } from '../selections/selections.service';
@@ -57,6 +64,19 @@ export class OffersController {
     @Inject(forwardRef(() => SelectionsService))
     private readonly selections: SelectionsService,
   ) {}
+
+  @Get('mine/history')
+  @ApiOperation({
+    summary:
+      'Seller: paginated closed offers (success = deal completed, canceled = mutual or acknowledged buyer cancel)',
+  })
+  @ApiOkResponse({ type: PaginatedSellerOfferHistoryDto })
+  mineHistory(
+    @CurrentUser() u: JwtUserPayload,
+    @Query() q: PaginationQueryDto,
+  ) {
+    return this.offers.listSellerHistory(u.sub, u.role, q.limit, q.cursor);
+  }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update own offer' })

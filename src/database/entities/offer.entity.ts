@@ -84,13 +84,25 @@ export class Offer {
   @Column({ type: 'timestamptz', name: 'buyer_cancelled_at', nullable: true })
   buyerCancelledAt: Date | null;
 
-  @Column({ type: 'timestamptz', name: 'seller_acknowledged_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'seller_acknowledged_at',
+    nullable: true,
+  })
   sellerAcknowledgedAt: Date | null;
 
-  @Column({ type: 'timestamptz', name: 'buyer_deal_complete_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'buyer_deal_complete_at',
+    nullable: true,
+  })
   buyerDealCompleteAt: Date | null;
 
-  @Column({ type: 'timestamptz', name: 'seller_deal_complete_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'seller_deal_complete_at',
+    nullable: true,
+  })
   sellerDealCompleteAt: Date | null;
 
   @Column({ type: 'text', name: 'buyer_deal_cancel_reason', nullable: true })
@@ -102,7 +114,11 @@ export class Offer {
   @Column({ type: 'text', name: 'seller_deal_cancel_reason', nullable: true })
   sellerDealCancelReason: string | null;
 
-  @Column({ type: 'timestamptz', name: 'seller_deal_cancel_at', nullable: true })
+  @Column({
+    type: 'timestamptz',
+    name: 'seller_deal_cancel_at',
+    nullable: true,
+  })
   sellerDealCancelAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

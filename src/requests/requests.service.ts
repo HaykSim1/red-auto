@@ -87,14 +87,23 @@ export class RequestsService {
     const page = hasMore ? rows.slice(0, take) : rows;
     const last = page[page.length - 1];
     const next_cursor =
-      hasMore && last
-        ? encodeCursor(last.createdAt, last.id)
-        : null;
+      hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
+
+    const ids = page.map((r) => r.id);
+    const offerCounts = await this.offers.countVisibleOffersByRequestIds(ids);
 
     return {
-      items: page.map((r) => this.serializeListItem(r)),
+      items: page.map((r) => this.serializeListItem(r, offerCounts[r.id] ?? 0)),
       next_cursor,
     };
+  }
+
+  async mineOfferStats(
+    userId: string,
+  ): Promise<{ total_offer_count: number }> {
+    const total_offer_count =
+      await this.offers.countVisibleOffersForUserOpenRequests(userId);
+    return { total_offer_count };
   }
 
   async listOpen(
@@ -110,6 +119,7 @@ export class RequestsService {
     const take = Math.min(Math.max(limit, 1), 100);
     const qb = this.requests
       .createQueryBuilder('r')
+      .leftJoinAndSelect('r.author', 'author')
       .leftJoinAndSelect('r.vehicle', 'vehicle')
       .leftJoinAndSelect('r.photos', 'photos')
       .where('r.status = :st', { st: PartRequestStatus.OPEN })
@@ -137,12 +147,15 @@ export class RequestsService {
     const page = hasMore ? rows.slice(0, take) : rows;
     const last = page[page.length - 1];
     const next_cursor =
-      hasMore && last
-        ? encodeCursor(last.createdAt, last.id)
-        : null;
+      hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
+
+    const ids = page.map((r) => r.id);
+    const offerCounts = await this.offers.countVisibleOffersByRequestIds(ids);
 
     return {
-      items: page.map((r) => this.serializePublic(r)),
+      items: page.map((r) =>
+        this.serializePublic(r, offerCounts[r.id] ?? 0, 'seller'),
+      ),
       next_cursor,
     };
   }
@@ -154,9 +167,7 @@ export class RequestsService {
 
     const r = this.requests.create({
       author: { id: userId },
-      vehicle: dto.vehicle_id
-        ? ({ id: dto.vehicle_id } as Vehicle)
-        : null,
+      vehicle: dto.vehicle_id ? ({ id: dto.vehicle_id } as Vehicle) : null,
       description: dto.description.trim(),
       vinText: dto.vin_text?.trim() ?? null,
       partNumber: dto.part_number?.trim() ?? null,
@@ -213,26 +224,52 @@ export class RequestsService {
     assertSellerFeedAccess(role);
     const r = await this.loadWithPhotosAndVehicle(id);
     if (!r) {
-      throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'Request not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
-    if (
-      r.status !== PartRequestStatus.OPEN ||
-      r.moderationState !== ModerationState.VISIBLE
-    ) {
-      throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+    const openAndVisible =
+      r.status === PartRequestStatus.OPEN &&
+      r.moderationState === ModerationState.VISIBLE;
+    if (!openAndVisible) {
+      const historyAccess = await this.offers.sellerHasHistoryAccessToRequest(
+        r.id,
+        userId,
+      );
+      if (!historyAccess) {
+        throw new ApiException(
+          'not_found',
+          'Request not found.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
     }
-    const base = this.serializePublic(r);
-    const my_offers = await this.offers.getSellerOffersOnRequest(id, userId);
+    const [offerCounts, my_offers] = await Promise.all([
+      this.offers.countVisibleOffersByRequestIds([r.id]),
+      this.offers.getSellerOffersOnRequest(id, userId),
+    ]);
+    const base = this.serializePublic(r, offerCounts[r.id] ?? 0, 'seller');
     return { ...base, my_offers };
   }
 
   async patchAuthor(id: string, userId: string, dto: PatchRequestDto) {
     const r = await this.requests.findOne({
       where: { id, author: { id: userId } },
-      relations: { author: true, vehicle: true, photos: true, activeAcceptanceOffer: true },
+      relations: {
+        author: true,
+        vehicle: true,
+        photos: true,
+        activeAcceptanceOffer: true,
+      },
     });
     if (!r) {
-      throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'Request not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (dto.status === PartRequestStatus.CANCELLED) {
@@ -254,10 +291,8 @@ export class RequestsService {
     }
 
     if (r.status === PartRequestStatus.OPEN) {
-      if (dto.description !== undefined)
-        r.description = dto.description.trim();
-      if (dto.vin_text !== undefined)
-        r.vinText = dto.vin_text?.trim() ?? null;
+      if (dto.description !== undefined) r.description = dto.description.trim();
+      if (dto.vin_text !== undefined) r.vinText = dto.vin_text?.trim() ?? null;
       if (dto.part_number !== undefined)
         r.partNumber = dto.part_number?.trim() ?? null;
     } else if (
@@ -287,7 +322,11 @@ export class RequestsService {
       relations: { photos: true },
     });
     if (!r) {
-      throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'Request not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     if (r.status !== PartRequestStatus.OPEN) {
       throw new ApiException(
@@ -314,18 +353,22 @@ export class RequestsService {
   ): Promise<PartRequest | null> {
     return this.requests.findOne({
       where: { id },
-      relations: { author: true, vehicle: true, photos: true, activeAcceptanceOffer: true },
+      relations: {
+        author: true,
+        vehicle: true,
+        photos: true,
+        activeAcceptanceOffer: true,
+      },
     });
   }
 
   private coverStorageKey(r: PartRequest): string | null {
-    const ph = [...(r.photos ?? [])].sort(
-      (a, b) => a.sortOrder - b.sortOrder,
-    );
+    const ph = [...(r.photos ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
     return ph[0]?.storageKey ?? null;
   }
 
-  private serializeListItem(r: PartRequest) {
+  private serializeListItem(r: PartRequest, offersCount: number) {
+    const photoCount = (r.photos ?? []).length;
     return {
       id: r.id,
       description: r.description,
@@ -335,13 +378,17 @@ export class RequestsService {
       created_at: r.createdAt.toISOString(),
       cover_storage_key: this.coverStorageKey(r),
       vehicle: r.vehicle ? this.serializeVehicle(r.vehicle) : null,
+      photo_count: photoCount,
+      offers_count: offersCount,
     };
   }
 
-  serializePublic(r: PartRequest) {
-    const ph = [...(r.photos ?? [])].sort(
-      (a, b) => a.sortOrder - b.sortOrder,
-    );
+  serializePublic(
+    r: PartRequest,
+    offersCount = 0,
+    audience: 'seller' | 'buyer' = 'buyer',
+  ) {
+    const ph = [...(r.photos ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
     return {
       id: r.id,
       description: r.description,
@@ -357,6 +404,11 @@ export class RequestsService {
         storage_key: p.storageKey,
         sort_order: p.sortOrder,
       })),
+      photo_count: ph.length,
+      offers_count: offersCount,
+      ...(audience === 'seller' && r.author
+        ? { buyer_is_special: Boolean(r.author.isSpecialBuyer) }
+        : {}),
     };
   }
 
@@ -365,13 +417,12 @@ export class RequestsService {
     userId: string,
     includeHiddenOffers: boolean,
   ) {
-    const offers = await this.offers.listForAuthor(
-      r.id,
-      userId,
-      includeHiddenOffers,
-    );
+    const [offerCounts, offers] = await Promise.all([
+      this.offers.countVisibleOffersByRequestIds([r.id]),
+      this.offers.listForAuthor(r.id, userId, includeHiddenOffers),
+    ]);
     return {
-      ...this.serializePublic(r),
+      ...this.serializePublic(r, offerCounts[r.id] ?? 0, 'buyer'),
       active_acceptance_offer_id: r.activeAcceptanceOffer?.id ?? null,
       offers,
     };

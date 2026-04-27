@@ -6,6 +6,7 @@ export enum UploadPurpose {
   REQUEST_PHOTO = 'request_photo',
   OFFER_PHOTO = 'offer_photo',
   SHOP_LOGO = 'shop_logo',
+  HOME_BANNER = 'home_banner',
 }
 
 export class PresignDto {

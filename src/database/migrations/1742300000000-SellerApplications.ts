@@ -33,12 +33,8 @@ export class SellerApplications1742300000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE UNIQUE INDEX "UQ_seller_applications_one_pending_per_user" ON "seller_applications" ("user_id") WHERE ("status" = 'pending')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "users" ADD "shop_name" text`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "users" ADD "shop_address" text`,
-    );
+    await queryRunner.query(`ALTER TABLE "users" ADD "shop_name" text`);
+    await queryRunner.query(`ALTER TABLE "users" ADD "shop_address" text`);
     await queryRunner.query(
       `ALTER TABLE "users" ADD "shop_logo_storage_key" text`,
     );
@@ -48,12 +44,8 @@ export class SellerApplications1742300000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "users" DROP COLUMN "shop_logo_storage_key"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "users" DROP COLUMN "shop_address"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "users" DROP COLUMN "shop_name"`,
-    );
+    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "shop_address"`);
+    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "shop_name"`);
     await queryRunner.query(
       `DROP INDEX "UQ_seller_applications_one_pending_per_user"`,
     );

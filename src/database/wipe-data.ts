@@ -15,7 +15,6 @@ async function wipe(): Promise<void> {
   `);
 
   if (rows.length === 0) {
-    // eslint-disable-next-line no-console
     console.log('No tables to truncate.');
     await dataSource.destroy();
     return;
@@ -26,13 +25,13 @@ async function wipe(): Promise<void> {
     .join(', ');
   await dataSource.query(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
 
-  // eslint-disable-next-line no-console
-  console.log(`Truncated ${rows.length} table(s). Migration history unchanged.`);
+  console.log(
+    `Truncated ${rows.length} table(s). Migration history unchanged.`,
+  );
   await dataSource.destroy();
 }
 
 wipe().catch((err: unknown) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

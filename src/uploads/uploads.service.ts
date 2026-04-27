@@ -5,6 +5,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { ApiException } from '../common/exceptions/api.exception';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
+import { UserRole } from '../database/enums';
 import { PresignDto, UploadPurpose } from './dto/presign.dto';
 
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -38,7 +39,16 @@ export class UploadsService {
 
     const ext = this.guessExt(dto.content_type);
     let prefix: string;
-    if (dto.purpose === UploadPurpose.REQUEST_PHOTO) {
+    if (dto.purpose === UploadPurpose.HOME_BANNER) {
+      if (user.role !== UserRole.ADMIN) {
+        throw new ApiException(
+          'forbidden',
+          'Admin only.',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      prefix = 'home_banners';
+    } else if (dto.purpose === UploadPurpose.REQUEST_PHOTO) {
       prefix = `requests/${user.sub}`;
     } else if (dto.purpose === UploadPurpose.SHOP_LOGO) {
       prefix = `seller_shop_logos/${user.sub}`;
@@ -55,13 +65,17 @@ export class UploadsService {
         accessKeyId: accessKey,
         secretAccessKey: secretKey,
       },
+      // Default WHEN_SUPPORTED adds x-amz-checksum-* to presigned URLs; browsers cannot satisfy that
+      // reliably for direct PUT. WHEN_REQUIRED matches PutObject and keeps URLs simpler for admin web.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
     });
 
+    // Omit ContentLength from the signature: browsers control Content-Length for fetch();
+    // a signed length often causes S3 403 (SignatureDoesNotMatch / policy mismatch).
     const cmd = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
       ContentType: dto.content_type,
-      ContentLength: dto.size,
     });
 
     const url = await getSignedUrl(client, cmd, { expiresIn: 900 });
@@ -71,7 +85,6 @@ export class UploadsService {
       method: 'PUT' as const,
       headers: {
         'Content-Type': dto.content_type,
-        'Content-Length': String(dto.size),
       },
       storage_key: key,
       expires_in: 900,

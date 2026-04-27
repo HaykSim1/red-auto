@@ -5,6 +5,7 @@ import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
 import { User } from '../database/entities/user.entity';
+import { HomeModule } from '../home/home.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
@@ -12,6 +13,7 @@ import { AdminService } from './admin.service';
   imports: [
     TypeOrmModule.forFeature([User, PartRequest, Offer, SellerApplication]),
     AuthModule,
+    HomeModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

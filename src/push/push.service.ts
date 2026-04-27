@@ -79,8 +79,7 @@ export class PushService {
         reason: 'expo_not_configured',
         devices_registered: 0,
         messages_sent: 0,
-        hint:
-          'Set EXPO_ACCESS_TOKEN in api/.env (Expo: expo.dev → account → Access tokens), restart the API, then retry.',
+        hint: 'Set EXPO_ACCESS_TOKEN in api/.env (Expo: expo.dev → account → Access tokens), restart the API, then retry.',
       };
     }
 
@@ -96,8 +95,7 @@ export class PushService {
         reason: 'no_devices',
         devices_registered: 0,
         messages_sent: 0,
-        hint:
-          'No POST /devices row for this user. On the phone, log in as this exact user (same UUID as admin if you left the field empty), open Profile → enable push, and ensure EXPO_PUBLIC_API_URL hits this API. Or paste the mobile user’s id from Users.',
+        hint: 'No POST /devices row for this user. On the phone, log in as this exact user (same UUID as admin if you left the field empty), open Profile → enable push, and ensure EXPO_PUBLIC_API_URL hits this API. Or paste the mobile user’s id from Users.',
       };
     }
 
@@ -109,8 +107,7 @@ export class PushService {
         reason: 'no_valid_tokens',
         devices_registered,
         messages_sent: 0,
-        hint:
-          'Device rows exist but stored tokens are not valid Expo push tokens. Re-register from the app (Profile → push) after a clean install or simulator reset.',
+        hint: 'Device rows exist but stored tokens are not valid Expo push tokens. Re-register from the app (Profile → push) after a clean install or simulator reset.',
       };
     }
 
@@ -119,7 +116,7 @@ export class PushService {
       sound: 'default',
       priority: 'high',
       channelId: ANDROID_PUSH_CHANNEL_ID,
-      title: 'Zapchast test',
+      title: 'Red Auto test',
       body: 'Push notifications are working.',
       data: { type: 'test' },
     }));

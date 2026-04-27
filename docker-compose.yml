@@ -1,16 +1,16 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: zapchast-postgres
+    container_name: red-auto-postgres
     restart: unless-stopped
     ports:
       - '5433:5432'
     environment:
-      POSTGRES_USER: zapchast
-      POSTGRES_PASSWORD: zapchast
-      POSTGRES_DB: zapchast
+      POSTGRES_USER: redauto
+      POSTGRES_PASSWORD: redauto
+      POSTGRES_DB: redauto
     volumes:
-      - zapchast_pg_data:/var/lib/postgresql/data
+      - red_auto_pg_data:/var/lib/postgresql/data
 
 volumes:
-  zapchast_pg_data:
+  red_auto_pg_data:

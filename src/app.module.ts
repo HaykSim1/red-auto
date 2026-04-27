@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { ClientConfigController } from './client-config/client-config.controller';
@@ -23,6 +25,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     DatabaseModule,
     CommonModule,
     PushModule,
@@ -52,6 +55,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     UploadsModule,
     RealtimeModule,
     AdminModule,
+    AnalyticsModule,
   ],
   controllers: [AppController, ClientConfigController],
   providers: [AppService],

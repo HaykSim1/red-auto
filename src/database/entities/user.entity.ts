@@ -53,6 +53,13 @@ export class User {
   @Column({ type: 'text', name: 'shop_logo_storage_key', nullable: true })
   shopLogoStorageKey: string | null;
 
+  @Column({ type: 'boolean', name: 'is_featured', default: false })
+  isFeatured: boolean;
+
+  /** Admin: prioritize in seller UX; exposed as buyer_is_special on seller-only request payloads. */
+  @Column({ type: 'boolean', name: 'is_special_buyer', default: false })
+  isSpecialBuyer: boolean;
+
   @Column({ type: 'text', unique: true, nullable: true })
   email: string | null;
 

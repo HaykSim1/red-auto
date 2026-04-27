@@ -27,11 +27,12 @@ async function upsertUser(
     existing.role = spec.role;
     existing.displayName = spec.displayName;
     if (spec.email !== undefined) existing.email = spec.email ?? null;
-    if (spec.passwordHash !== undefined) existing.passwordHash = spec.passwordHash ?? null;
+    if (spec.passwordHash !== undefined)
+      existing.passwordHash = spec.passwordHash ?? null;
     existing.sellerPhone = spec.sellerPhone ?? null;
     existing.sellerTelegram = spec.sellerTelegram ?? null;
     await repo.save(existing);
-    // eslint-disable-next-line no-console
+
     console.log(`Updated ${label}:`, spec.phone);
     return;
   }
@@ -47,7 +48,7 @@ async function upsertUser(
       sellerTelegram: spec.sellerTelegram ?? null,
     }),
   );
-  // eslint-disable-next-line no-console
+
   console.log(`Created ${label}:`, spec.phone);
 }
 
@@ -60,7 +61,6 @@ async function seed(): Promise<void> {
     (seedAll || seedAdminOnly) &&
     process.env.ALLOW_DANGEROUS_SEED !== 'true'
   ) {
-    // eslint-disable-next-line no-console
     console.error(
       'Refusing to run seed with NODE_ENV=production. Set ALLOW_DANGEROUS_SEED=true only if you intend to mutate production data.',
     );
@@ -68,7 +68,6 @@ async function seed(): Promise<void> {
   }
 
   if (!seedAll && !seedAdminOnly) {
-    // eslint-disable-next-line no-console
     console.log(
       'Skip seed (set SEED=true for client + admin, or SEED_ADMIN=true for admin only).',
     );
@@ -79,7 +78,7 @@ async function seed(): Promise<void> {
   const users = dataSource.getRepository(User);
 
   const adminPhone = process.env.SEED_ADMIN_PHONE ?? '+37400000000';
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@zapchast.local';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@red-auto.local';
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'changeme123';
   const adminPasswordHash = await bcrypt.hash(adminPassword, BCRYPT_ROUNDS);
 
@@ -117,7 +116,6 @@ async function seed(): Promise<void> {
 }
 
 seed().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

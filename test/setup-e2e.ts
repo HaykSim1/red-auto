@@ -5,9 +5,8 @@ config({ path: resolve(__dirname, '../.env') });
 
 if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL =
-    'postgresql://zapchast:zapchast@127.0.0.1:5433/zapchast';
+    'postgresql://redauto:redauto@127.0.0.1:5433/redauto';
 }
 
-process.env.JWT_SECRET ??=
-  'e2e-test-jwt-secret-min-16-chars';
+process.env.JWT_SECRET ??= 'e2e-test-jwt-secret-min-16-chars';
 process.env.NODE_ENV ??= 'test';

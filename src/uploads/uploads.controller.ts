@@ -1,5 +1,10 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PresignResponseDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';

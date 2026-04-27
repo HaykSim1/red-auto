@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../../database/entities/user.entity';
 import { UserRole } from '../../database/enums';
 import type { JwtUserPayload } from '../../common/interfaces/jwt-user-payload.interface';
 
@@ -13,7 +16,10 @@ interface JwtPayloadShape {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    @InjectRepository(User) private readonly users: Repository<User>,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -21,11 +27,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  validate(payload: JwtPayloadShape): JwtUserPayload {
+  async validate(payload: JwtPayloadShape): Promise<JwtUserPayload> {
+    const user = await this.users.findOne({ where: { id: payload.sub } });
+    if (!user || user.blockedAt) {
+      throw new UnauthorizedException();
+    }
     return {
-      sub: payload.sub,
-      role: payload.role,
-      phone_verified: payload.phone_verified,
+      sub: user.id,
+      role: user.role ?? UserRole.USER,
+      phone_verified: true,
     };
   }
 }

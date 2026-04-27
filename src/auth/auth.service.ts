@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { LessThan, Repository } from 'typeorm';
 import { ApiException } from '../common/exceptions/api.exception';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
@@ -16,7 +17,7 @@ const MAX_OTP_ATTEMPTS = 8;
 const BCRYPT_ROUNDS = 10;
 
 function randomOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(randomInt(100000, 1000000));
 }
 
 @Injectable()
@@ -33,7 +34,7 @@ export class AuthService {
 
   async requestOtp(phone: string, _otpDevMode: boolean): Promise<void> {
     await this.otpSessions.delete({ phone });
-    await this.cleanupExpired();
+    void this.cleanupExpired();
 
     const code = randomOtp();
     const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
@@ -58,7 +59,10 @@ export class AuthService {
   async verifyOtp(
     phone: string,
     code: string,
-  ): Promise<{ access_token: string; user: ReturnType<AuthService['userSummary']> }> {
+  ): Promise<{
+    access_token: string;
+    user: ReturnType<AuthService['userSummary']>;
+  }> {
     const session = await this.otpSessions.findOne({
       where: { phone },
       order: { createdAt: 'DESC' },
@@ -111,14 +115,9 @@ export class AuthService {
     const localAdminOtp =
       this.config.get<boolean>('LOCAL_ADMIN_OTP') === true ||
       this.config.get<boolean>('ADMIN_OTP_BOOTSTRAP') === true;
-    const allowAdminPromote =
-      nodeEnv !== 'production' || localAdminOtp;
+    const allowAdminPromote = nodeEnv !== 'production' || localAdminOtp;
     const phonesMatchSeed = user.phone.trim() === adminPhone;
-    if (
-      allowAdminPromote &&
-      phonesMatchSeed &&
-      user.role === UserRole.USER
-    ) {
+    if (allowAdminPromote && phonesMatchSeed && user.role === UserRole.USER) {
       user.role = UserRole.ADMIN;
       user = await this.users.save(user);
     }
@@ -148,6 +147,28 @@ export class AuthService {
       access_token,
       user: this.userSummary(user),
     };
+  }
+
+  /** Re-issue JWT from DB (e.g. after role change) without OTP. */
+  async refreshAccessToken(userId: string): Promise<{ access_token: string }> {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+    }
+    if (user.blockedAt) {
+      throw new ApiException(
+        'user_blocked',
+        'User is blocked.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    const resolvedRole = user.role ?? UserRole.USER;
+    const access_token = await this.jwt.signAsync({
+      sub: user.id,
+      role: resolvedRole,
+      phone_verified: true,
+    });
+    return { access_token };
   }
 
   userSummary(user: User) {

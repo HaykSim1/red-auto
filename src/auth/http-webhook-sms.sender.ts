@@ -2,8 +2,14 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SmsSender } from './sms-sender.interface';
 
-function formatOtpMessage(template: string, phone: string, code: string): string {
-  return template.replace(/\{\{phone\}\}/g, phone).replace(/\{\{code\}\}/g, code);
+function formatOtpMessage(
+  template: string,
+  phone: string,
+  code: string,
+): string {
+  return template
+    .replace(/\{\{phone\}\}/g, phone)
+    .replace(/\{\{code\}\}/g, code);
 }
 
 /** Escape for use inside JSON string literals (between quotes in template). */
@@ -24,7 +30,7 @@ export class HttpWebhookSmsSender implements SmsSender {
     const url = this.config.getOrThrow<string>('SMS_HTTP_URL').trim();
     const msgTemplate =
       this.config.get<string>('SMS_OTP_MESSAGE_TEMPLATE') ??
-      'Zapchast code: {{code}}';
+      'Red Auto code: {{code}}';
     const message = formatOtpMessage(msgTemplate, phone, code);
 
     const bodyTemplate =
@@ -47,10 +53,15 @@ export class HttpWebhookSmsSender implements SmsSender {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    const headersJson = this.config.get<string>('SMS_HTTP_HEADERS_JSON')?.trim();
+    const headersJson = this.config
+      .get<string>('SMS_HTTP_HEADERS_JSON')
+      ?.trim();
     if (headersJson) {
       try {
-        Object.assign(headers, JSON.parse(headersJson) as Record<string, string>);
+        Object.assign(
+          headers,
+          JSON.parse(headersJson) as Record<string, string>,
+        );
       } catch {
         throw new Error('SMS_HTTP_HEADERS_JSON must be valid JSON object');
       }

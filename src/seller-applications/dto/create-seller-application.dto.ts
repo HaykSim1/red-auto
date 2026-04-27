@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateSellerApplicationDto {
   @ApiProperty({ example: 'Auto Parts LLC' })
@@ -16,7 +22,8 @@ export class CreateSellerApplicationDto {
 
   @ApiProperty({
     example: '+37494123456',
-    description: 'Shop contact phone (E.164 Armenia). May differ from login phone.',
+    description:
+      'Shop contact phone (E.164 Armenia). May differ from login phone.',
   })
   @IsString()
   @Matches(/^\+374\d{8}$/, {
@@ -24,7 +31,9 @@ export class CreateSellerApplicationDto {
   })
   shop_phone: string;
 
-  @ApiPropertyOptional({ description: 'S3 storage key from POST /uploads/presign (shop_logo)' })
+  @ApiPropertyOptional({
+    description: 'S3 storage key from POST /uploads/presign (shop_logo)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(512)

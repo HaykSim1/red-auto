@@ -1,4 +1,4 @@
-# Zapchast API (NestJS)
+# Red Auto API (NestJS)
 
 ## Local development
 

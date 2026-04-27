@@ -27,13 +27,16 @@ async function bootstrap() {
   if (corsOrigins === '*') {
     app.enableCors({ origin: true, credentials: true });
   } else {
-    const list = corsOrigins.split(',').map((o) => o.trim()).filter(Boolean);
+    const list = corsOrigins
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
     app.enableCors({ origin: list, credentials: true });
   }
 
   if (nodeEnv !== 'production' || swaggerInProd) {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Zapchast API')
+      .setTitle('Red Auto API')
       .setDescription(
         'Request-based auto parts marketplace (MVP). All routes are under prefix /v1. Contract: repo docs/api.md.',
       )

@@ -80,14 +80,13 @@ export class VehiclesService {
       );
     }
     const merged = {
-      brand: dto.brand !== undefined ? dto.brand?.trim() ?? null : v.brand,
-      model: dto.model !== undefined ? dto.model?.trim() ?? null : v.model,
-      year: dto.year !== undefined ? dto.year ?? null : v.year,
+      brand: dto.brand !== undefined ? (dto.brand?.trim() ?? null) : v.brand,
+      model: dto.model !== undefined ? (dto.model?.trim() ?? null) : v.model,
+      year: dto.year !== undefined ? (dto.year ?? null) : v.year,
       engine:
-        dto.engine !== undefined ? dto.engine?.trim() ?? null : v.engine,
-      vin: dto.vin !== undefined ? dto.vin?.trim() ?? null : v.vin,
-      label:
-        dto.label !== undefined ? dto.label?.trim() ?? null : v.label,
+        dto.engine !== undefined ? (dto.engine?.trim() ?? null) : v.engine,
+      vin: dto.vin !== undefined ? (dto.vin?.trim() ?? null) : v.vin,
+      label: dto.label !== undefined ? (dto.label?.trim() ?? null) : v.label,
     };
     this.assertIdentity(merged);
     Object.assign(v, merged);

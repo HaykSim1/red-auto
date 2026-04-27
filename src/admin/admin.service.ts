@@ -48,6 +48,7 @@ export class AdminService {
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+
     if (!passwordMatches) {
       throw new ApiException(
         'invalid_credentials',
@@ -106,6 +107,7 @@ export class AdminService {
         role: u.role,
         blocked_at: u.blockedAt?.toISOString() ?? null,
         display_name: u.displayName,
+        is_special_buyer: u.isSpecialBuyer,
         created_at: u.createdAt.toISOString(),
       })),
     };
@@ -114,7 +116,11 @@ export class AdminService {
   async blockUser(id: string): Promise<void> {
     const u = await this.users.findOne({ where: { id } });
     if (!u) {
-      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     u.blockedAt = new Date();
     await this.users.save(u);
@@ -123,10 +129,38 @@ export class AdminService {
   async unblockUser(id: string): Promise<void> {
     const u = await this.users.findOne({ where: { id } });
     if (!u) {
-      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     u.blockedAt = null;
     await this.users.save(u);
+  }
+
+  async setSpecialBuyer(id: string, isSpecial: boolean) {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u) {
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (u.role !== UserRole.USER) {
+      throw new ApiException(
+        'not_a_buyer',
+        'Special buyer flag applies only to buyer accounts.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    u.isSpecialBuyer = isSpecial;
+    await this.users.save(u);
+    return {
+      id: u.id,
+      is_special_buyer: u.isSpecialBuyer,
+    };
   }
 
   async listRequests(limit: number, offset: number) {
@@ -154,7 +188,11 @@ export class AdminService {
   async patchRequest(id: string, dto: PatchModerationDto) {
     const r = await this.requests.findOne({ where: { id } });
     if (!r) {
-      throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'Request not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     r.moderationState = dto.moderation_state;
     await this.requests.save(r);
@@ -181,7 +219,8 @@ export class AdminService {
           request_id: o.request.id,
           seller_id: o.seller.id,
           title,
-          request_summary: previewText(o.request.description, 100) || '(No description)',
+          request_summary:
+            previewText(o.request.description, 100) || '(No description)',
           seller_label: o.seller.displayName?.trim() || o.seller.phone,
           moderation_state: o.moderationState,
           price_amount: o.priceAmount,
@@ -195,7 +234,11 @@ export class AdminService {
   async patchOffer(id: string, dto: PatchModerationDto) {
     const o = await this.offers.findOne({ where: { id } });
     if (!o) {
-      throw new ApiException('not_found', 'Offer not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'Offer not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     o.moderationState = dto.moderation_state;
     await this.offers.save(o);
@@ -304,19 +347,100 @@ export class AdminService {
   }
 
   async statsSummary(from: Date, to: Date) {
-    const users = await this.users.count({
-      where: { createdAt: Between(from, to) },
-    });
-    const requests = await this.requests.count({
-      where: { createdAt: Between(from, to) },
-    });
-    const offers = await this.offers.count({
-      where: { createdAt: Between(from, to) },
-    });
+    const [users, requests, offers] = await Promise.all([
+      this.users.count({ where: { createdAt: Between(from, to) } }),
+      this.requests.count({ where: { createdAt: Between(from, to) } }),
+      this.offers.count({ where: { createdAt: Between(from, to) } }),
+    ]);
     return {
       from: from.toISOString(),
       to: to.toISOString(),
       counts: { users, requests, offers },
     };
+  }
+
+  async listFeaturedShops(limit: number, offset: number) {
+    const [rows, total] = await this.users.findAndCount({
+      where: { role: UserRole.SELLER },
+      order: { isFeatured: 'DESC', createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+
+    const ids = rows.map((u) => u.id);
+    let ratingMap: Record<
+      string,
+      { avg_score: string | null; rating_count: number }
+    > = {};
+    if (ids.length > 0) {
+      const agg = (await this.users.query(
+        `SELECT seller_id, avg_score, rating_count FROM seller_rating_aggregate WHERE seller_id = ANY($1)`,
+        [ids],
+      )) as Array<{
+        seller_id: string;
+        avg_score: string | null;
+        rating_count: number;
+      }>;
+      ratingMap = Object.fromEntries(agg.map((r) => [r.seller_id, r]));
+    }
+
+    return {
+      total,
+      items: rows.map((u) => {
+        const agg = ratingMap[u.id];
+        return {
+          id: u.id,
+          phone: u.phone,
+          shop_name: u.shopName,
+          rating_avg:
+            agg?.avg_score != null && agg.avg_score !== ''
+              ? Number(agg.avg_score)
+              : null,
+          rating_count: agg?.rating_count ?? 0,
+          is_featured: u.isFeatured,
+          created_at: u.createdAt.toISOString(),
+        };
+      }),
+    };
+  }
+
+  async featureShop(id: string): Promise<void> {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u) {
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (u.role !== UserRole.SELLER) {
+      throw new ApiException(
+        'not_a_seller',
+        'User is not a seller.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    u.isFeatured = true;
+    await this.users.save(u);
+  }
+
+  async unfeatureShop(id: string): Promise<void> {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u) {
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (u.role !== UserRole.SELLER) {
+      throw new ApiException(
+        'not_a_seller',
+        'User is not a seller.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+    u.isFeatured = false;
+    await this.users.save(u);
   }
 }

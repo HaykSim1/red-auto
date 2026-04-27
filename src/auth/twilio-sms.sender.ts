@@ -2,8 +2,14 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SmsSender } from './sms-sender.interface';
 
-function formatOtpMessage(template: string, phone: string, code: string): string {
-  return template.replace(/\{\{phone\}\}/g, phone).replace(/\{\{code\}\}/g, code);
+function formatOtpMessage(
+  template: string,
+  phone: string,
+  code: string,
+): string {
+  return template
+    .replace(/\{\{phone\}\}/g, phone)
+    .replace(/\{\{code\}\}/g, code);
 }
 
 export class TwilioSmsSender implements SmsSender {
@@ -14,7 +20,9 @@ export class TwilioSmsSender implements SmsSender {
   async sendOtp(phone: string, code: string): Promise<void> {
     const accountSid = this.config.getOrThrow<string>('TWILIO_ACCOUNT_SID');
     const authToken = this.config.getOrThrow<string>('TWILIO_AUTH_TOKEN');
-    const messagingServiceSid = this.config.get<string>('TWILIO_MESSAGING_SERVICE_SID')?.trim();
+    const messagingServiceSid = this.config
+      .get<string>('TWILIO_MESSAGING_SERVICE_SID')
+      ?.trim();
     const fromNumber = this.config.get<string>('TWILIO_FROM_NUMBER')?.trim();
     if (!messagingServiceSid && !fromNumber) {
       throw new Error(
@@ -24,7 +32,7 @@ export class TwilioSmsSender implements SmsSender {
 
     const template =
       this.config.get<string>('SMS_OTP_MESSAGE_TEMPLATE') ??
-      'Zapchast code: {{code}}';
+      'Red Auto code: {{code}}';
     const body = formatOtpMessage(template, phone, code);
 
     const params = new URLSearchParams();

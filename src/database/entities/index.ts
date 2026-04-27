@@ -1,4 +1,6 @@
+import { AnalyticsMarketplaceDaily } from './analytics-marketplace-daily.entity';
 import { Device } from './device.entity';
+import { HomeBanner } from './home-banner.entity';
 import { OfferPhoto } from './offer-photo.entity';
 import { Offer } from './offer.entity';
 import { OtpSession } from './otp-session.entity';
@@ -12,8 +14,10 @@ import { User } from './user.entity';
 import { Vehicle } from './vehicle.entity';
 
 export const typeOrmEntities = [
+  AnalyticsMarketplaceDaily,
   User,
   OtpSession,
+  HomeBanner,
   Vehicle,
   PartRequest,
   RequestPhoto,
@@ -27,7 +31,9 @@ export const typeOrmEntities = [
 ] as const;
 
 export {
+  AnalyticsMarketplaceDaily,
   Device,
+  HomeBanner,
   Offer,
   OfferPhoto,
   OtpSession,

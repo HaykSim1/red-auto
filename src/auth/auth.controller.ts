@@ -1,9 +1,20 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthOtpVerifyResponseDto } from '../common/dto/responses.dto';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
+  AuthOtpVerifyResponseDto,
+  AuthRefreshResponseDto,
+} from '../common/dto/responses.dto';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { AuthService } from './auth.service';
 import { OtpRequestDto } from './dto/otp-request.dto';
 import { OtpVerifyDto } from './dto/otp-verify.dto';
@@ -35,5 +46,13 @@ export class AuthController {
   @ApiCreatedResponse({ type: AuthOtpVerifyResponseDto })
   verify(@Body() dto: OtpVerifyDto) {
     return this.auth.verifyOtp(dto.phone.trim(), dto.code.trim());
+  }
+
+  @Post('refresh')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Re-issue JWT from DB (e.g. after role change); no OTP' })
+  @ApiOkResponse({ type: AuthRefreshResponseDto })
+  refresh(@CurrentUser() u: JwtUserPayload) {
+    return this.auth.refreshAccessToken(u.sub);
   }
 }

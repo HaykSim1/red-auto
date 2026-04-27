@@ -25,11 +25,7 @@ export class SelectionsService {
   ) {}
 
   /** Buyer: mark deal complete; finalizes only when seller has also marked complete. */
-  async createOrReplace(
-    requestId: string,
-    authorId: string,
-    offerId: string,
-  ) {
+  async createOrReplace(requestId: string, authorId: string, offerId: string) {
     return this.dataSource.transaction(async (em) => {
       const req = await em.findOne(PartRequest, {
         where: { id: requestId },
@@ -105,10 +101,7 @@ export class SelectionsService {
         where: { id: offerId },
         relations: { seller: true },
       });
-      if (
-        offerFresh?.buyerDealCompleteAt &&
-        offerFresh?.sellerDealCompleteAt
-      ) {
+      if (offerFresh?.buyerDealCompleteAt && offerFresh?.sellerDealCompleteAt) {
         await this.finalizeDealAfterMutualComplete(
           em,
           req,
@@ -135,7 +128,11 @@ export class SelectionsService {
         relations: { seller: true, request: true },
       });
       if (!offer) {
-        throw new ApiException('not_found', 'Offer not found.', HttpStatus.NOT_FOUND);
+        throw new ApiException(
+          'not_found',
+          'Offer not found.',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       const req = await em.findOne(PartRequest, {
@@ -143,7 +140,11 @@ export class SelectionsService {
         relations: { author: true, activeAcceptanceOffer: true },
       });
       if (!req) {
-        throw new ApiException('not_found', 'Request not found.', HttpStatus.NOT_FOUND);
+        throw new ApiException(
+          'not_found',
+          'Request not found.',
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       if (req.activeAcceptanceOffer?.id !== offerId) {
@@ -181,10 +182,7 @@ export class SelectionsService {
         where: { id: offerId },
         relations: { seller: true },
       });
-      if (
-        offerFresh?.buyerDealCompleteAt &&
-        offerFresh?.sellerDealCompleteAt
-      ) {
+      if (offerFresh?.buyerDealCompleteAt && offerFresh?.sellerDealCompleteAt) {
         await this.finalizeDealAfterMutualComplete(
           em,
           req,

@@ -1,6 +1,14 @@
 import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { FeaturedShopItemDto, ShopDetailResponseDto } from '../common/dto/responses.dto';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
+  FeaturedShopItemDto,
+  ShopDetailResponseDto,
+} from '../common/dto/responses.dto';
 import { HomeService } from './home.service';
 
 @ApiTags('shops')

@@ -1,5 +1,10 @@
 import { Body, Controller, Get, HttpStatus, Patch } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { MeResponseDto } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ApiException } from '../common/exceptions/api.exception';

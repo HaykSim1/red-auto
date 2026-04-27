@@ -7,7 +7,7 @@
 const base = process.argv[2] ?? process.env.SMOKE_URL;
 if (!base?.trim()) {
   console.error('Usage: node scripts/smoke-health.mjs <baseUrl>');
-  console.error('  e.g. node scripts/smoke-health.mjs https://zapchast-api.up.railway.app');
+  console.error('  e.g. node scripts/smoke-health.mjs https://red-auto-api.up.railway.app');
   console.error('  or set SMOKE_URL and run npm run smoke:health');
   process.exit(1);
 }
