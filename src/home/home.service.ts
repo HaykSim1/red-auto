@@ -171,6 +171,7 @@ export class HomeService {
 
     const reviewRows = await this.sellerRatings.find({
       where: { seller: { id: sellerId } },
+      relations: { rater: true },
       order: { createdAt: 'DESC' },
       take: 50,
     });
@@ -192,6 +193,7 @@ export class HomeService {
         id: r.id,
         score: r.score,
         comment: r.comment,
+        rater_name: r.rater?.displayName?.trim() || null,
         created_at: r.createdAt.toISOString(),
       })),
     };

@@ -124,6 +124,7 @@ export class ShopReviewDto {
   @ApiProperty() id: string;
   @ApiProperty() score: number;
   @ApiPropertyOptional({ type: String, nullable: true }) comment: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) rater_name: string | null;
   @ApiProperty() created_at: string;
 }
 
