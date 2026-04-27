@@ -11,9 +11,9 @@ import {
 } from 'class-validator';
 
 export class CreateRatingDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Seller user id to rate' })
   @IsUUID()
-  request_id: string;
+  seller_id: string;
 
   @ApiProperty({ minimum: 1, maximum: 5 })
   @Type(() => Number)

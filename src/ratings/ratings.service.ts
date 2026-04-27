@@ -1,136 +1,87 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ApiException } from '../common/exceptions/api.exception';
-import { Offer } from '../database/entities/offer.entity';
-import { PartRequest } from '../database/entities/part-request.entity';
-import { Selection } from '../database/entities/selection.entity';
 import { SellerRating } from '../database/entities/seller-rating.entity';
 import { SellerRatingAggregate } from '../database/entities/seller-rating-aggregate.entity';
 import { User } from '../database/entities/user.entity';
+import { UserRole } from '../database/enums';
 import { CreateRatingDto } from './dto/create-rating.dto';
+
+const COOLDOWN_DAYS = 10;
 
 @Injectable()
 export class RatingsService {
   constructor(
-    private readonly dataSource: DataSource,
     @InjectRepository(SellerRating)
     private readonly ratings: Repository<SellerRating>,
+    @InjectRepository(SellerRatingAggregate)
+    private readonly aggregates: Repository<SellerRatingAggregate>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
   ) {}
 
   async create(raterId: string, dto: CreateRatingDto) {
-    const existing = await this.ratings.findOne({
-      where: {
-        request: { id: dto.request_id },
-        rater: { id: raterId },
-      },
-      relations: { seller: true },
-    });
-    if (existing) {
-      return {
-        id: existing.id,
-        request_id: dto.request_id,
-        seller_id: existing.seller.id,
-        score: existing.score,
-        comment: existing.comment,
-        created_at: existing.createdAt.toISOString(),
-        idempotent: true as const,
-      };
+    if (raterId === dto.seller_id) {
+      throw new ApiException(
+        'rating_self',
+        'You cannot rate yourself.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
     }
 
-    return this.dataSource.transaction(async (em) => {
-      const req = await em.findOne(PartRequest, {
-        where: { id: dto.request_id },
-        relations: { author: true },
-      });
-      if (!req || req.author.id !== raterId) {
-        throw new ApiException(
-          'forbidden',
-          'Only the request author can rate.',
-          HttpStatus.FORBIDDEN,
-        );
-      }
+    const seller = await this.users.findOne({ where: { id: dto.seller_id } });
+    if (!seller || seller.role !== UserRole.SELLER) {
+      throw new ApiException(
+        'not_found',
+        'Seller not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
 
-      const sel = await em.findOne(Selection, {
-        where: { requestId: dto.request_id },
-      });
-      if (!sel) {
-        throw new ApiException(
-          'bad_request',
-          'No selection on this request.',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    // Enforce 10-day cooldown per (rater, seller) pair
+    const cooldownFrom = new Date();
+    cooldownFrom.setDate(cooldownFrom.getDate() - COOLDOWN_DAYS);
 
-      const offer = await em.findOne(Offer, {
-        where: { id: sel.chosenOfferId },
-        relations: { seller: true },
-      });
-      if (!offer) {
-        throw new ApiException(
-          'not_found',
-          'Offer not found.',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      const sellerId = offer.seller.id;
-
-      const row = em.create(SellerRating, {
-        request: req,
-        rater: { id: raterId } as User,
-        seller: { id: sellerId } as User,
-        score: dto.score,
-        comment: dto.comment?.trim() ?? null,
-      });
-
-      let saved: SellerRating;
-      try {
-        saved = await em.save(row);
-      } catch (e) {
-        const err = e as { code?: string };
-        if (err.code === '23505') {
-          const again = await em.findOne(SellerRating, {
-            where: {
-              request: { id: dto.request_id },
-              rater: { id: raterId },
-            },
-            relations: { seller: true },
-          });
-          if (again) {
-            return {
-              id: again.id,
-              request_id: dto.request_id,
-              seller_id: again.seller.id,
-              score: again.score,
-              comment: again.comment,
-              created_at: again.createdAt.toISOString(),
-              idempotent: true as const,
-            };
-          }
-        }
-        throw e;
-      }
-
-      await this.refreshAggregate(em, sellerId);
-
-      return {
-        id: saved.id,
-        request_id: dto.request_id,
-        seller_id: sellerId,
-        score: saved.score,
-        comment: saved.comment,
-        created_at: saved.createdAt.toISOString(),
-      };
+    const recent = await this.ratings.findOne({
+      where: {
+        rater: { id: raterId },
+        seller: { id: dto.seller_id },
+      },
+      order: { createdAt: 'DESC' },
     });
+
+    if (recent && recent.createdAt > cooldownFrom) {
+      throw new ApiException(
+        'rating_cooldown',
+        `You can rate this seller once every ${COOLDOWN_DAYS} days.`,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    const row = this.ratings.create({
+      rater: { id: raterId } as User,
+      seller: { id: dto.seller_id } as User,
+      request: null,
+      score: dto.score,
+      comment: dto.comment?.trim() ?? null,
+    });
+
+    const saved = await this.ratings.save(row);
+    await this.refreshAggregate(dto.seller_id);
+
+    return {
+      id: saved.id,
+      seller_id: dto.seller_id,
+      score: saved.score,
+      comment: saved.comment,
+      created_at: saved.createdAt.toISOString(),
+    };
   }
 
-  private async refreshAggregate(
-    em: import('typeorm').EntityManager,
-    sellerId: string,
-  ): Promise<void> {
-    const raw = await em
-      .createQueryBuilder(SellerRating, 'r')
+  private async refreshAggregate(sellerId: string): Promise<void> {
+    const raw = await this.ratings
+      .createQueryBuilder('r')
       .select('COUNT(*)', 'cnt')
       .addSelect('AVG(r.score)', 'avg')
       .where('r.seller_id = :sid', { sid: sellerId })
@@ -141,11 +92,9 @@ export class RatingsService {
       ratingCount === 0 ? 0 : Number.parseFloat(String(raw?.avg ?? '0'));
     const rounded = Math.round(avgScore * 1000) / 1000;
 
-    let agg = await em.findOne(SellerRatingAggregate, {
-      where: { sellerId },
-    });
+    let agg = await this.aggregates.findOne({ where: { sellerId } });
     if (!agg) {
-      agg = em.create(SellerRatingAggregate, {
+      agg = this.aggregates.create({
         sellerId,
         avgScore: '0.000',
         ratingCount: 0,
@@ -153,6 +102,6 @@ export class RatingsService {
     }
     agg.avgScore = rounded.toFixed(3);
     agg.ratingCount = ratingCount;
-    await em.save(agg);
+    await this.aggregates.save(agg);
   }
 }
