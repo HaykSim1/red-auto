@@ -42,6 +42,7 @@ import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { SetSpecialBuyerDto } from './dto/set-special-buyer.dto';
 import { PushTestDto } from './dto/push-test.dto';
 import { ReorderHomeBannersDto } from './dto/reorder-home-banners.dto';
+import { UpdateAppVersionDto } from './dto/update-app-version.dto';
 
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
@@ -254,6 +255,21 @@ export class AdminController {
   @ApiOperation({ summary: 'Set display order (all ids required)' })
   reorderHomeBanners(@Body() dto: ReorderHomeBannersDto) {
     return this.homeBanners.reorder(dto.ordered_ids);
+  }
+
+  @Get('app-versions')
+  @ApiOperation({ summary: 'Get app version config for both platforms' })
+  getAppVersions() {
+    return this.admin.getAppVersions();
+  }
+
+  @Patch('app-versions/:platform')
+  @ApiOperation({ summary: 'Update app version config for a platform (ios or android)' })
+  patchAppVersion(
+    @Param('platform') platform: string,
+    @Body() dto: UpdateAppVersionDto,
+  ) {
+    return this.admin.patchAppVersion(platform as 'ios' | 'android', dto);
   }
 
   @Get('stats/summary')

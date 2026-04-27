@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { Repository, Between } from 'typeorm';
 import { ApiException } from '../common/exceptions/api.exception';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
+import { AppVersionConfig } from '../database/entities/app-version-config.entity';
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
@@ -12,6 +13,7 @@ import { User } from '../database/entities/user.entity';
 import { SellerApplicationStatus, UserRole } from '../database/enums';
 import { PushService } from '../push/push.service';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
+import { UpdateAppVersionDto } from './dto/update-app-version.dto';
 
 function previewText(text: string | null | undefined, max: number): string {
   const t = (text ?? '').trim();
@@ -30,6 +32,8 @@ export class AdminService {
     private readonly offers: Repository<Offer>,
     @InjectRepository(SellerApplication)
     private readonly sellerApplications: Repository<SellerApplication>,
+    @InjectRepository(AppVersionConfig)
+    private readonly appVersionConfigs: Repository<AppVersionConfig>,
     private readonly push: PushService,
     private readonly jwt: JwtService,
   ) {}
@@ -442,5 +446,24 @@ export class AdminService {
     }
     u.isFeatured = false;
     await this.users.save(u);
+  }
+
+  async getAppVersions(): Promise<AppVersionConfig[]> {
+    return this.appVersionConfigs.find();
+  }
+
+  async patchAppVersion(
+    platform: 'ios' | 'android',
+    dto: UpdateAppVersionDto,
+  ): Promise<AppVersionConfig> {
+    let config = await this.appVersionConfigs.findOne({ where: { platform } });
+    if (!config) {
+      config = this.appVersionConfigs.create({ platform });
+    }
+    if (dto.min_build !== undefined) config.minBuild = dto.min_build;
+    if (dto.latest_build !== undefined) config.latestBuild = dto.latest_build;
+    if (dto.store_url !== undefined) config.storeUrl = dto.store_url ?? null;
+    if (dto.force_update_enabled !== undefined) config.forceUpdateEnabled = dto.force_update_enabled;
+    return this.appVersionConfigs.save(config);
   }
 }

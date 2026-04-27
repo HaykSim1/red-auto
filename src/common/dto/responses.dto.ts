@@ -5,6 +5,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
  * These classes are not used at runtime validation — only for Swagger schema output.
  */
 
+// ── App version ──
+
+export class AppVersionCheckDto {
+  @ApiProperty({ enum: ['none', 'soft', 'hard'] }) action: 'none' | 'soft' | 'hard';
+  @ApiPropertyOptional({ type: String, nullable: true }) store_url: string | null;
+  @ApiProperty() latest_build: number;
+}
+
 // ── Shared primitives ──
 
 export class PhotoDto {

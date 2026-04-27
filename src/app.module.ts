@@ -3,6 +3,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
+import { AppVersionModule } from './app-version/app-version.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
@@ -56,6 +57,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     RealtimeModule,
     AdminModule,
     AnalyticsModule,
+    AppVersionModule,
   ],
   controllers: [AppController, ClientConfigController],
   providers: [AppService],
