@@ -43,6 +43,7 @@ export type PublicShopDetail = {
   description: string | null;
   shop_address: string | null;
   seller_phone: string | null;
+  seller_telegram: string | null;
   is_featured: boolean;
   rating_avg: number | null;
   rating_count: number;
