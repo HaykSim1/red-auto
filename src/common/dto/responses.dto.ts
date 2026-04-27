@@ -145,6 +145,10 @@ export class ShopDetailResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true }) seller_phone:
     | string
     | null;
+  /** Seller’s Telegram handle (without @); shown on shop profile. */
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_telegram:
+    | string
+    | null;
   /** Admin-curated featured flag; clients may show a “verified” style badge. */
   @ApiProperty() is_featured: boolean;
   @ApiPropertyOptional({ type: Number, nullable: true }) rating_avg:

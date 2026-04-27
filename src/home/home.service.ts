@@ -147,6 +147,7 @@ export class HomeService {
              u.shop_name AS shop_name,
              u.shop_address AS shop_address,
              u.seller_phone AS seller_phone,
+             u.seller_telegram AS seller_telegram,
              u.shop_logo_storage_key AS shop_logo_storage_key,
              u.is_featured AS is_featured,
              agg.avg_score AS rating_avg,
@@ -183,6 +184,7 @@ export class HomeService {
       description: null,
       shop_address: addr.length > 0 ? addr : null,
       seller_phone: phone.length > 0 ? phone : null,
+      seller_telegram: row.seller_telegram?.trim() || null,
       is_featured: row.is_featured === true,
       rating_avg:
         row.rating_avg != null && row.rating_avg !== ''
