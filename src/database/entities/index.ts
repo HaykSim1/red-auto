@@ -1,4 +1,5 @@
 import { AnalyticsMarketplaceDaily } from './analytics-marketplace-daily.entity';
+import { AppVersionConfig } from './app-version-config.entity';
 import { Device } from './device.entity';
 import { HomeBanner } from './home-banner.entity';
 import { OfferPhoto } from './offer-photo.entity';
@@ -15,6 +16,7 @@ import { Vehicle } from './vehicle.entity';
 
 export const typeOrmEntities = [
   AnalyticsMarketplaceDaily,
+  AppVersionConfig,
   User,
   OtpSession,
   HomeBanner,
@@ -32,6 +34,7 @@ export const typeOrmEntities = [
 
 export {
   AnalyticsMarketplaceDaily,
+  AppVersionConfig,
   Device,
   HomeBanner,
   Offer,
