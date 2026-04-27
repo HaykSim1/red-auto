@@ -165,6 +165,17 @@ export class RequestsService {
       await this.vehicles.assertOwnerVehicle(userId, dto.vehicle_id);
     }
 
+    const openCount = await this.requests.count({
+      where: { author: { id: userId }, status: PartRequestStatus.OPEN },
+    });
+    if (openCount >= 10) {
+      throw new ApiException(
+        'open_requests_limit',
+        'You have reached the limit of 10 open requests. Close some before creating new ones.',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
     const r = this.requests.create({
       author: { id: userId },
       vehicle: dto.vehicle_id ? ({ id: dto.vehicle_id } as Vehicle) : null,
