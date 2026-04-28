@@ -36,6 +36,9 @@ export class PartRequest {
   @Column({ type: 'text', name: 'part_number', nullable: true })
   partNumber: string | null;
 
+  @Column({ type: 'int', default: 1 })
+  quantity: number;
+
   @Column({
     type: 'enum',
     enum: PartRequestStatus,

@@ -182,6 +182,7 @@ export class RequestsService {
       description: dto.description.trim(),
       vinText: dto.vin_text?.trim() ?? null,
       partNumber: dto.part_number?.trim() ?? null,
+      quantity: dto.quantity ?? 1,
       region: 'AM',
       status: PartRequestStatus.OPEN,
       moderationState: ModerationState.VISIBLE,
@@ -383,6 +384,7 @@ export class RequestsService {
     return {
       id: r.id,
       description: r.description,
+      quantity: r.quantity,
       status: r.status,
       region: r.region,
       moderation_state: r.moderationState,
@@ -403,6 +405,7 @@ export class RequestsService {
     return {
       id: r.id,
       description: r.description,
+      quantity: r.quantity,
       vin_text: r.vinText,
       part_number: r.partNumber,
       status: r.status,

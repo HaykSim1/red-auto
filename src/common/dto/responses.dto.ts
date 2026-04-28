@@ -285,6 +285,7 @@ export class PaginatedSellerOfferHistoryDto {
 export class RequestPublicDto {
   @ApiProperty() id: string;
   @ApiProperty() description: string;
+  @ApiProperty({ default: 1 }) quantity: number;
   @ApiPropertyOptional({ type: String, nullable: true }) vin_text:
     | string
     | null;
