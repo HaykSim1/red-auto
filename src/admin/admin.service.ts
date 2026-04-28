@@ -461,9 +461,8 @@ export class AdminService {
       config = this.appVersionConfigs.create({ platform });
     }
     if (dto.min_build !== undefined) config.minBuild = dto.min_build;
-    if (dto.latest_build !== undefined) config.latestBuild = dto.latest_build;
-    if (dto.store_url !== undefined) config.storeUrl = dto.store_url ?? null;
     if (dto.force_update_enabled !== undefined) config.forceUpdateEnabled = dto.force_update_enabled;
+    if (dto.store_url !== undefined) config.storeUrl = dto.store_url ?? null;
     return this.appVersionConfigs.save(config);
   }
 }

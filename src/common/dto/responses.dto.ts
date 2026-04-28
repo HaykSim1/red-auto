@@ -8,9 +8,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 // ── App version ──
 
 export class AppVersionCheckDto {
-  @ApiProperty({ enum: ['none', 'soft', 'hard'] }) action: 'none' | 'soft' | 'hard';
+  @ApiProperty({ enum: ['none', 'hard'] }) action: 'none' | 'hard';
   @ApiPropertyOptional({ type: String, nullable: true }) store_url: string | null;
-  @ApiProperty() latest_build: number;
 }
 
 // ── Shared primitives ──

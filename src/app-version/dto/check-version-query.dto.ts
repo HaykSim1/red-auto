@@ -1,13 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import { IsIn, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CheckVersionQueryDto {
   @ApiProperty({ enum: ['ios', 'android'] })
   @IsIn(['ios', 'android'])
   platform: 'ios' | 'android';
 
-  @ApiProperty({ minimum: 0 })
+  @ApiProperty()
   @Type(() => Number)
   @IsInt()
   @Min(0)

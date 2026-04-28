@@ -12,11 +12,9 @@ export class AppVersionController {
 
   @Public()
   @Get()
-  @ApiOperation({
-    summary: 'Check if the current build requires an update (soft or hard)',
-  })
+  @ApiOperation({ summary: 'Check if current build requires a force update' })
   @ApiOkResponse({ type: AppVersionCheckDto })
-  check(@Query() query: CheckVersionQueryDto) {
+  check(@Query() query: CheckVersionQueryDto): Promise<AppVersionCheckDto> {
     return this.service.check(query.platform, query.build);
   }
 }
