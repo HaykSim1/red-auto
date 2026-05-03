@@ -46,4 +46,10 @@ export class CreateRequestDto {
   @IsInt()
   @Min(1)
   quantity?: number;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string | null;
 }

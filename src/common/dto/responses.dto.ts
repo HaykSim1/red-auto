@@ -220,6 +220,7 @@ export class RequestMineStatsResponseDto {
 export class RequestListItemDto {
   @ApiProperty() id: string;
   @ApiProperty() description: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) city: string | null;
   @ApiProperty() status: string;
   @ApiProperty() region: string;
   @ApiProperty() moderation_state: string;
@@ -286,6 +287,7 @@ export class RequestPublicDto {
   @ApiProperty() id: string;
   @ApiProperty() description: string;
   @ApiProperty({ default: 1 }) quantity: number;
+  @ApiPropertyOptional({ type: String, nullable: true }) city: string | null;
   @ApiPropertyOptional({ type: String, nullable: true }) vin_text:
     | string
     | null;

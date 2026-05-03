@@ -39,6 +39,9 @@ export class PartRequest {
   @Column({ type: 'int', default: 1 })
   quantity: number;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  city: string | null;
+
   @Column({
     type: 'enum',
     enum: PartRequestStatus,
