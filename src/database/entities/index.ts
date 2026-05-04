@@ -6,6 +6,7 @@ import { OfferPhoto } from './offer-photo.entity';
 import { Offer } from './offer.entity';
 import { OtpSession } from './otp-session.entity';
 import { PartRequest } from './part-request.entity';
+import { RefreshSession } from './refresh-session.entity';
 import { RequestPhoto } from './request-photo.entity';
 import { Selection } from './selection.entity';
 import { SellerApplication } from './seller-application.entity';
@@ -19,6 +20,7 @@ export const typeOrmEntities = [
   AppVersionConfig,
   User,
   OtpSession,
+  RefreshSession,
   HomeBanner,
   Vehicle,
   PartRequest,
@@ -41,6 +43,7 @@ export {
   OfferPhoto,
   OtpSession,
   PartRequest,
+  RefreshSession,
   RequestPhoto,
   Selection,
   SellerApplication,

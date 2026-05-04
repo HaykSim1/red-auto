@@ -14,6 +14,7 @@ export const envSchema = z
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
     JWT_EXPIRES_IN: z.string().default('15m'),
+    JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
     /** Comma-separated origins; * allows all (dev only). */
     CORS_ORIGINS: z.string().optional().default('*'),
     SEED_ADMIN: boolFromEnv,

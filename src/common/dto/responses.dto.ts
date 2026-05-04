@@ -64,12 +64,14 @@ export class AuthOtpVerifyUserDto {
 
 export class AuthOtpVerifyResponseDto {
   @ApiProperty() access_token: string;
+  @ApiProperty() refresh_token: string;
   @ApiProperty({ type: () => AuthOtpVerifyUserDto }) user: AuthOtpVerifyUserDto;
 }
 
-/** POST /auth/refresh — new JWT with role from current DB state */
+/** POST /auth/refresh — new access + refresh token pair (rotation) */
 export class AuthRefreshResponseDto {
   @ApiProperty() access_token: string;
+  @ApiProperty() refresh_token: string;
 }
 
 export class MeResponseDto {
