@@ -15,6 +15,8 @@ type SeedUserSpec = {
   passwordHash?: string | null;
   sellerPhone?: string | null;
   sellerTelegram?: string | null;
+  shopName?: string | null;
+  shopAddress?: string | null;
 };
 
 async function upsertUser(
@@ -31,6 +33,8 @@ async function upsertUser(
       existing.passwordHash = spec.passwordHash ?? null;
     existing.sellerPhone = spec.sellerPhone ?? null;
     existing.sellerTelegram = spec.sellerTelegram ?? null;
+    existing.shopName = spec.shopName ?? null;
+    existing.shopAddress = spec.shopAddress ?? null;
     await repo.save(existing);
 
     console.log(`Updated ${label}:`, spec.phone);
@@ -46,6 +50,8 @@ async function upsertUser(
       passwordHash: spec.passwordHash ?? null,
       sellerPhone: spec.sellerPhone ?? null,
       sellerTelegram: spec.sellerTelegram ?? null,
+      shopName: spec.shopName ?? null,
+      shopAddress: spec.shopAddress ?? null,
     }),
   );
 
@@ -111,6 +117,22 @@ async function seed(): Promise<void> {
     },
     'admin',
   );
+
+  const testPhone = process.env.TEST_PHONE;
+  if (testPhone) {
+    await upsertUser(
+      users,
+      {
+        phone: testPhone,
+        role: UserRole.SELLER,
+        displayName: 'Red Auto Test Shop',
+        shopName: 'Red Auto Test Shop',
+        shopAddress: 'Yerevan, Armenia',
+        sellerPhone: testPhone,
+      },
+      'iOS review test seller',
+    );
+  }
 
   await dataSource.destroy();
 }

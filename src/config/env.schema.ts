@@ -73,9 +73,32 @@ export const envSchema = z
      * For staging / demos only — never enable on a public production API with real users.
      */
     ALLOW_LOG_ONLY_SMS_IN_PRODUCTION: boolFromEnv,
+    /**
+     * Phone number for App Store / Play Store review accounts. When set, OTP requests for
+     * this phone skip SMS and accept TEST_OTP_CODE instead of a random code.
+     */
+    TEST_PHONE: z.string().optional(),
+    /** Fixed 6-digit OTP accepted when the caller's phone matches TEST_PHONE. */
+    TEST_OTP_CODE: z
+      .string()
+      .regex(/^\d{6}$/, 'TEST_OTP_CODE must be exactly 6 digits')
+      .optional(),
+    /**
+     * Allow TEST_PHONE bypass when NODE_ENV=production.
+     * Never enable on a real production API with real users.
+     */
+    ALLOW_TEST_PHONES_IN_PRODUCTION: boolFromEnv,
   })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV === 'production') {
+      if (data.TEST_PHONE && data.ALLOW_TEST_PHONES_IN_PRODUCTION !== true) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'TEST_PHONE must not be set in production (set ALLOW_TEST_PHONES_IN_PRODUCTION=true only for App Store review builds)',
+          path: ['TEST_PHONE'],
+        });
+      }
       if (data.OTP_DEV_MODE === true) {
         ctx.addIssue({
           code: 'custom',

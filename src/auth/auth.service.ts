@@ -54,7 +54,11 @@ export class AuthService {
     await this.otpSessions.delete({ phone });
     void this.cleanupExpired();
 
-    const code = randomOtp();
+    const testPhone = this.config.get<string>('TEST_PHONE');
+    const testOtpCode = this.config.get<string>('TEST_OTP_CODE');
+    const isTestPhone = !!(testPhone && testOtpCode && phone === testPhone);
+
+    const code = isTestPhone ? testOtpCode! : randomOtp();
     const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
@@ -67,7 +71,11 @@ export class AuthService {
       }),
     );
 
-    await this.sms.sendOtp(phone, code);
+    if (isTestPhone) {
+      console.log(`[AuthService] TEST_PHONE bypass: OTP skipped for ${phone}`);
+    } else {
+      await this.sms.sendOtp(phone, code);
+    }
   }
 
   private async cleanupExpired(): Promise<void> {
