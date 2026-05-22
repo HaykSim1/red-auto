@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpStatus, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -24,11 +25,7 @@ export class UsersController {
   async me(@CurrentUser() jwt: JwtUserPayload) {
     const me = await this.users.getMe(jwt.sub);
     if (!me) {
-      throw new ApiException(
-        'not_found',
-        'User not found.',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
     }
     return me;
   }
@@ -38,5 +35,13 @@ export class UsersController {
   @ApiOkResponse({ type: MeResponseDto })
   patchMe(@CurrentUser() jwt: JwtUserPayload, @Body() dto: UpdateMeDto) {
     return this.users.updateMe(jwt.sub, dto);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete account (anonymize)' })
+  @ApiNoContentResponse({ description: 'Account deleted' })
+  deleteMe(@CurrentUser() jwt: JwtUserPayload) {
+    return this.users.deleteMe(jwt.sub);
   }
 }
