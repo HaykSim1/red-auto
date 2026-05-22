@@ -56,9 +56,16 @@ export class AuthService {
 
     const testPhone = this.config.get<string>('TEST_PHONE');
     const testOtpCode = this.config.get<string>('TEST_OTP_CODE');
+    const testPhoneBuyer = this.config.get<string>('TEST_PHONE_BUYER');
+    const testOtpCodeBuyer = this.config.get<string>('TEST_OTP_CODE_BUYER');
     const isTestPhone = !!(testPhone && testOtpCode && phone === testPhone);
+    const isTestPhoneBuyer = !!(testPhoneBuyer && testOtpCodeBuyer && phone === testPhoneBuyer);
 
-    const code = isTestPhone ? testOtpCode : randomOtp();
+    const code = isTestPhone
+      ? testOtpCode
+      : isTestPhoneBuyer
+        ? testOtpCodeBuyer
+        : randomOtp();
     const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
@@ -71,7 +78,7 @@ export class AuthService {
       }),
     );
 
-    if (isTestPhone) {
+    if (isTestPhone || isTestPhoneBuyer) {
       console.log(`[AuthService] TEST_PHONE bypass: OTP skipped for ${phone}`);
     } else {
       await this.sms.sendOtp(phone, code);

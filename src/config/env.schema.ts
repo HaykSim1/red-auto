@@ -84,7 +84,17 @@ export const envSchema = z
       .regex(/^\d{6}$/, 'TEST_OTP_CODE must be exactly 6 digits')
       .optional(),
     /**
-     * Allow TEST_PHONE bypass when NODE_ENV=production.
+     * Second review account (buyer role) for App Store / Play Store review.
+     * Same bypass behaviour as TEST_PHONE but for a plain buyer account.
+     */
+    TEST_PHONE_BUYER: z.string().optional(),
+    /** Fixed 6-digit OTP accepted when the caller's phone matches TEST_PHONE_BUYER. */
+    TEST_OTP_CODE_BUYER: z
+      .string()
+      .regex(/^\d{6}$/, 'TEST_OTP_CODE_BUYER must be exactly 6 digits')
+      .optional(),
+    /**
+     * Allow TEST_PHONE / TEST_PHONE_BUYER bypass when NODE_ENV=production.
      * Never enable on a real production API with real users.
      */
     ALLOW_TEST_PHONES_IN_PRODUCTION: boolFromEnv,
@@ -97,6 +107,14 @@ export const envSchema = z
           message:
             'TEST_PHONE must not be set in production (set ALLOW_TEST_PHONES_IN_PRODUCTION=true only for App Store review builds)',
           path: ['TEST_PHONE'],
+        });
+      }
+      if (data.TEST_PHONE_BUYER && data.ALLOW_TEST_PHONES_IN_PRODUCTION !== true) {
+        ctx.addIssue({
+          code: 'custom',
+          message:
+            'TEST_PHONE_BUYER must not be set in production (set ALLOW_TEST_PHONES_IN_PRODUCTION=true only for App Store review builds)',
+          path: ['TEST_PHONE_BUYER'],
         });
       }
       if (data.OTP_DEV_MODE === true) {
