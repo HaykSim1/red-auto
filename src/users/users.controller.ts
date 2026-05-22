@@ -41,7 +41,7 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete account (anonymize)' })
   @ApiNoContentResponse({ description: 'Account deleted' })
-  deleteMe(@CurrentUser() jwt: JwtUserPayload) {
+  async deleteMe(@CurrentUser() jwt: JwtUserPayload) {
     return this.users.deleteMe(jwt.sub);
   }
 }
