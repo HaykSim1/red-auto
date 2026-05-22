@@ -33,14 +33,13 @@ export class BlockedUserGuard implements CanActivate {
 
     const user = await this.users.findOne({
       where: { id: userId },
-      select: { id: true, blockedAt: true },
+      select: { id: true, blockedAt: true, deletedAt: true },
     });
     if (user?.blockedAt) {
-      throw new ApiException(
-        'user_blocked',
-        'User is blocked.',
-        HttpStatus.FORBIDDEN,
-      );
+      throw new ApiException('user_blocked', 'User is blocked.', HttpStatus.FORBIDDEN);
+    }
+    if (user?.deletedAt) {
+      throw new ApiException('account_deleted', 'Account has been deleted.', HttpStatus.UNAUTHORIZED);
     }
     return true;
   }
