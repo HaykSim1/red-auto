@@ -1,7 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { ApiException } from '../common/exceptions/api.exception';
+import { Device } from '../database/entities/device.entity';
+import { RefreshSession } from '../database/entities/refresh-session.entity';
 import { User } from '../database/entities/user.entity';
 import { UserRole } from '../database/enums';
 import { SellerApplicationsService } from '../seller-applications/seller-applications.service';
@@ -12,6 +14,10 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly users: Repository<User>,
+    @InjectRepository(RefreshSession)
+    private readonly refreshSessions: Repository<RefreshSession>,
+    @InjectRepository(Device)
+    private readonly devices: Repository<Device>,
     private readonly sellerApplications: SellerApplicationsService,
   ) {}
 
@@ -102,6 +108,11 @@ export class UsersService {
       passwordHash: null,
       deletedAt: new Date(),
     });
+    await this.refreshSessions.update(
+      { user: { id: userId }, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+    await this.devices.delete({ user: { id: userId } });
   }
 
   private toMeResponse(

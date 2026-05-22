@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Device } from '../database/entities/device.entity';
+import { RefreshSession } from '../database/entities/refresh-session.entity';
 import { User } from '../database/entities/user.entity';
 import { SellerApplicationsModule } from '../seller-applications/seller-applications.module';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), SellerApplicationsModule],
+  imports: [TypeOrmModule.forFeature([User, RefreshSession, Device]), SellerApplicationsModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

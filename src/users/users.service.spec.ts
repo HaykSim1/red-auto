@@ -2,6 +2,8 @@ import { HttpStatus } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Device } from '../database/entities/device.entity';
+import { RefreshSession } from '../database/entities/refresh-session.entity';
 import { User } from '../database/entities/user.entity';
 import { UserRole } from '../database/enums';
 import { SellerApplicationsService } from '../seller-applications/seller-applications.service';
@@ -27,7 +29,7 @@ const mockUser = (): User =>
     isSpecialBuyer: false,
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as User);
+  }) as User;
 
 describe('UsersService.deleteMe', () => {
   let service: UsersService;
@@ -43,6 +45,18 @@ describe('UsersService.deleteMe', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             findOneOrFail: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(RefreshSession),
+          useValue: {
+            update: jest.fn().mockResolvedValue({ affected: 0 }),
+          },
+        },
+        {
+          provide: getRepositoryToken(Device),
+          useValue: {
+            delete: jest.fn().mockResolvedValue({ affected: 0 }),
           },
         },
         {

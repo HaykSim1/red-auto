@@ -58,7 +58,7 @@ export class AuthService {
     const testOtpCode = this.config.get<string>('TEST_OTP_CODE');
     const isTestPhone = !!(testPhone && testOtpCode && phone === testPhone);
 
-    const code = isTestPhone ? testOtpCode! : randomOtp();
+    const code = isTestPhone ? testOtpCode : randomOtp();
     const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
@@ -189,7 +189,12 @@ export class AuthService {
 
     const user = this.users.create({ id: userId } as User);
     await this.refreshSessions.save(
-      this.refreshSessions.create({ user, tokenHash, expiresAt, revokedAt: null }),
+      this.refreshSessions.create({
+        user,
+        tokenHash,
+        expiresAt,
+        revokedAt: null,
+      }),
     );
     return raw;
   }
@@ -218,12 +223,27 @@ export class AuthService {
     }
 
     if (!session) {
-      throw new ApiException('unauthorized', 'Invalid or expired refresh token.', HttpStatus.UNAUTHORIZED);
+      throw new ApiException(
+        'unauthorized',
+        'Invalid or expired refresh token.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     const user = session.user;
     if (user.blockedAt) {
-      throw new ApiException('user_blocked', 'User is blocked.', HttpStatus.FORBIDDEN);
+      throw new ApiException(
+        'user_blocked',
+        'User is blocked.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    if (user.deletedAt) {
+      throw new ApiException(
+        'account_deleted',
+        'Account has been deleted.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     // Rotate: revoke old session
@@ -264,13 +284,24 @@ export class AuthService {
   async refreshAccessToken(userId: string): Promise<{ access_token: string }> {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) {
-      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     if (user.blockedAt) {
       throw new ApiException(
         'user_blocked',
         'User is blocked.',
         HttpStatus.FORBIDDEN,
+      );
+    }
+    if (user.deletedAt) {
+      throw new ApiException(
+        'account_deleted',
+        'Account has been deleted.',
+        HttpStatus.UNAUTHORIZED,
       );
     }
     const resolvedRole = user.role ?? UserRole.USER;
