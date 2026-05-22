@@ -8,8 +8,6 @@ export class AddCityToPartRequest1746300000000 implements MigrationInterface {
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "part_requests" DROP COLUMN "city"`,
-    );
+    await queryRunner.query(`ALTER TABLE "part_requests" DROP COLUMN "city"`);
   }
 }

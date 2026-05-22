@@ -264,7 +264,9 @@ export class AdminController {
   }
 
   @Patch('app-versions/:platform')
-  @ApiOperation({ summary: 'Update app version config for a platform (ios or android)' })
+  @ApiOperation({
+    summary: 'Update app version config for a platform (ios or android)',
+  })
   patchAppVersion(
     @Param('platform') platform: string,
     @Body() dto: UpdateAppVersionDto,

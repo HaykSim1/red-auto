@@ -104,7 +104,7 @@ export class HomeService {
   }
 
   async getFeaturedShops(): Promise<FeaturedShopItem[]> {
-    const rows = (await this.users.query(
+    const rows = await this.users.query(
       `
       SELECT u.id,
              u.shop_name AS shop_name,
@@ -121,15 +121,9 @@ export class HomeService {
                u.created_at ASC
       `,
       [UserRole.SELLER],
-    )) as Array<{
-      id: string;
-      shop_name: string;
-      shop_logo_storage_key: string | null;
-      rating_avg: string | null;
-      rating_count: number;
-    }>;
+    );
 
-    return rows.map((row) => ({
+    return rows.map((row: Record<string, unknown>) => ({
       id: row.id,
       shop_name: row.shop_name,
       shop_logo_storage_key: row.shop_logo_storage_key,

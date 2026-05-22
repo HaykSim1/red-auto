@@ -12,7 +12,13 @@ import { AdminService } from './admin.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, PartRequest, Offer, SellerApplication, AppVersionConfig]),
+    TypeOrmModule.forFeature([
+      User,
+      PartRequest,
+      Offer,
+      SellerApplication,
+      AppVersionConfig,
+    ]),
     AuthModule,
     HomeModule,
   ],

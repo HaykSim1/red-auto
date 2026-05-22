@@ -98,9 +98,7 @@ export class RequestsService {
     };
   }
 
-  async mineOfferStats(
-    userId: string,
-  ): Promise<{ total_offer_count: number }> {
+  async mineOfferStats(userId: string): Promise<{ total_offer_count: number }> {
     const total_offer_count =
       await this.offers.countVisibleOffersForUserOpenRequests(userId);
     return { total_offer_count };

@@ -11,6 +11,8 @@ export class SpecialBuyerFlag1743000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "is_special_buyer"`);
+    await queryRunner.query(
+      `ALTER TABLE "users" DROP COLUMN "is_special_buyer"`,
+    );
   }
 }

@@ -377,15 +377,11 @@ export class AdminService {
       { avg_score: string | null; rating_count: number }
     > = {};
     if (ids.length > 0) {
-      const agg = (await this.users.query(
+      const agg = await this.users.query(
         `SELECT seller_id, avg_score, rating_count FROM seller_rating_aggregate WHERE seller_id = ANY($1)`,
         [ids],
-      )) as Array<{
-        seller_id: string;
-        avg_score: string | null;
-        rating_count: number;
-      }>;
-      ratingMap = Object.fromEntries(agg.map((r) => [r.seller_id, r]));
+      );
+      ratingMap = Object.fromEntries(agg.map((r: Record<string, unknown>) => [r.seller_id, r]));
     }
 
     return {
@@ -461,7 +457,8 @@ export class AdminService {
       config = this.appVersionConfigs.create({ platform });
     }
     if (dto.min_build !== undefined) config.minBuild = dto.min_build;
-    if (dto.force_update_enabled !== undefined) config.forceUpdateEnabled = dto.force_update_enabled;
+    if (dto.force_update_enabled !== undefined)
+      config.forceUpdateEnabled = dto.force_update_enabled;
     if (dto.store_url !== undefined) config.storeUrl = dto.store_url ?? null;
     return this.appVersionConfigs.save(config);
   }

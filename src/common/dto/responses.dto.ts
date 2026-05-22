@@ -9,7 +9,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AppVersionCheckDto {
   @ApiProperty({ enum: ['none', 'hard'] }) action: 'none' | 'hard';
-  @ApiPropertyOptional({ type: String, nullable: true }) store_url: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) store_url:
+    | string
+    | null;
 }
 
 // ── Shared primitives ──
@@ -133,7 +135,9 @@ export class ShopReviewDto {
   @ApiProperty() id: string;
   @ApiProperty() score: number;
   @ApiPropertyOptional({ type: String, nullable: true }) comment: string | null;
-  @ApiPropertyOptional({ type: String, nullable: true }) rater_name: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) rater_name:
+    | string
+    | null;
   @ApiProperty() created_at: string;
 }
 

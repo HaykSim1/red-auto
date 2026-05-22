@@ -42,7 +42,9 @@ export class AuthController {
   @Post('otp/verify')
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Verify OTP and receive access + refresh token pair' })
+  @ApiOperation({
+    summary: 'Verify OTP and receive access + refresh token pair',
+  })
   @ApiCreatedResponse({ type: AuthOtpVerifyResponseDto })
   verify(@Body() dto: OtpVerifyDto) {
     return this.auth.verifyOtp(dto.phone.trim(), dto.code.trim());
@@ -51,7 +53,9 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Exchange refresh token for a new access + refresh token pair' })
+  @ApiOperation({
+    summary: 'Exchange refresh token for a new access + refresh token pair',
+  })
   @ApiOkResponse({ type: AuthRefreshResponseDto })
   refresh(@Body() dto: RefreshTokenDto) {
     return this.auth.refreshTokens(dto.refresh_token);

@@ -41,7 +41,6 @@ function normalizeVariantLabel(v?: string | null): string | null {
   return t.length ? t : null;
 }
 
-
 @Injectable()
 export class OffersService {
   constructor(
@@ -674,9 +673,7 @@ export class OffersService {
     const sellerIds = [...new Set(list.map((o) => o.seller.id))];
     const agMap = await this.loadAggregates(sellerIds);
 
-    return list.map((o) =>
-      this.serializeOffer(o, authorId, agMap, requestId),
-    );
+    return list.map((o) => this.serializeOffer(o, authorId, agMap, requestId));
   }
 
   private async loadAggregates(
@@ -933,7 +930,9 @@ export class OffersService {
   /**
    * Total visible, non–mutually-cancelled offers on this buyer’s open requests (tab badge).
    */
-  async countVisibleOffersForUserOpenRequests(authorId: string): Promise<number> {
+  async countVisibleOffersForUserOpenRequests(
+    authorId: string,
+  ): Promise<number> {
     const row = await this.offers
       .createQueryBuilder('o')
       .innerJoin('o.request', 'r')

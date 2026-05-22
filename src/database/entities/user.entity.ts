@@ -72,6 +72,11 @@ export class User {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
-  @Column({ type: 'timestamptz', name: 'deleted_at', nullable: true, default: null })
+  @Column({
+    type: 'timestamptz',
+    name: 'deleted_at',
+    nullable: true,
+    default: null,
+  })
   deletedAt: Date | null;
 }
