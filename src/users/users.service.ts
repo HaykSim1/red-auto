@@ -84,6 +84,26 @@ export class UsersService {
     return this.toMeResponse(user, seller_application);
   }
 
+  async deleteMe(userId: string): Promise<void> {
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+    }
+    await this.users.update(userId, {
+      phone: `deleted:${userId}`,
+      displayName: null,
+      sellerPhone: null,
+      sellerTelegram: null,
+      shopName: null,
+      shopAddress: null,
+      shopLogoStorageKey: null,
+      preferredLocale: null,
+      email: null,
+      passwordHash: null,
+      deletedAt: new Date(),
+    });
+  }
+
   private toMeResponse(
     user: User,
     seller_application: Awaited<
