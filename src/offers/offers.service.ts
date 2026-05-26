@@ -622,12 +622,25 @@ export class OffersService {
       offer_id: saved.id,
     });
 
+    const partLabel = full?.request?.description
+      ? full.request.description.length > 40
+        ? `${full.request.description.substring(0, 40)}…`
+        : full.request.description
+      : null;
+    const priceLabel =
+      full?.priceAmount != null
+        ? `${Number(full.priceAmount).toLocaleString('en')} ${full?.priceCurrency ?? 'AMD'}`
+        : null;
+    const notifBody =
+      event === 'created'
+        ? [partLabel, priceLabel].filter(Boolean).join(' · ') ||
+          'A seller submitted an offer on your request.'
+        : [partLabel, priceLabel].filter(Boolean).join(' · ') ||
+          'A seller updated their offer on your request.';
+
     void this.push.sendToUserIds([authorId], {
       title: event === 'created' ? 'New offer' : 'Offer updated',
-      body:
-        event === 'created'
-          ? 'A seller submitted an offer on your request.'
-          : 'A seller updated their offer on your request.',
+      body: notifBody,
       data: {
         type: event === 'created' ? 'offer.created' : 'offer.updated',
         request_id: requestId,
