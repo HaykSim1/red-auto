@@ -19,6 +19,11 @@ export class PushService {
   ) {
     const token = config.get<string>('EXPO_ACCESS_TOKEN')?.trim();
     this.expo = token ? new Expo({ accessToken: token }) : null;
+    if (!this.expo) {
+      this.logger.warn(
+        'EXPO_ACCESS_TOKEN is not set — push notifications are disabled. Set it in .env to enable.',
+      );
+    }
   }
 
   async sendToUserIds(
@@ -149,6 +154,7 @@ export class PushService {
   async broadcastNewRequest(
     excludeUserId: string,
     data: Record<string, string>,
+    description?: string,
   ): Promise<void> {
     if (!this.expo) return;
     const rows = await this.devices
@@ -162,9 +168,14 @@ export class PushService {
       .distinct(true)
       .getRawMany<{ userId: string }>();
     const ids = [...new Set(rows.map((r) => r.userId))];
+    const body = description
+      ? description.length > 60
+        ? `${description.substring(0, 60)}…`
+        : description
+      : 'A new open request was posted in the marketplace.';
     await this.sendToUserIds(ids, {
       title: 'New part request',
-      body: 'A new open request was posted in the marketplace.',
+      body,
       data: { ...data, type: 'request.created' },
     });
   }
