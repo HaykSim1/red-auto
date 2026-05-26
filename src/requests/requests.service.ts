@@ -207,10 +207,14 @@ export class RequestsService {
       region: saved.region,
     });
 
-    void this.push.broadcastNewRequest(userId, {
-      request_id: saved.id,
-      region: saved.region,
-    });
+    void this.push.broadcastNewRequest(
+      userId,
+      {
+        request_id: saved.id,
+        region: saved.region,
+      },
+      saved.description,
+    );
 
     return this.serializeAuthorDetail(full!, userId, false);
   }
