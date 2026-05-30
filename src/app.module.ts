@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
 import { AppVersionModule } from './app-version/app-version.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { TasksModule } from './tasks/tasks.module';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { ClientConfigController } from './client-config/client-config.controller';
@@ -58,6 +59,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     AdminModule,
     AnalyticsModule,
     AppVersionModule,
+    TasksModule,
   ],
   controllers: [AppController, ClientConfigController],
   providers: [AppService],
