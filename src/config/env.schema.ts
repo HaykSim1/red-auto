@@ -119,7 +119,10 @@ export const envSchema = z
           path: ['TEST_PHONE'],
         });
       }
-      if (data.TEST_PHONE_BUYER && data.ALLOW_TEST_PHONES_IN_PRODUCTION !== true) {
+      if (
+        data.TEST_PHONE_BUYER &&
+        data.ALLOW_TEST_PHONES_IN_PRODUCTION !== true
+      ) {
         ctx.addIssue({
           code: 'custom',
           message:

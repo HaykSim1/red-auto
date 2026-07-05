@@ -1,7 +1,23 @@
 import { ConfigService } from '@nestjs/config';
 import { WingsSmsSender } from './wings-sms.sender';
 
-type FetchMock = jest.Mock<Promise<Response>, [RequestInfo | URL, RequestInit?]>;
+type FetchMock = jest.Mock<
+  Promise<Response>,
+  [RequestInfo | URL, RequestInit?]
+>;
+
+interface WingsRequestBody {
+  messages: Array<{
+    recipient: string;
+    'message-id': string;
+    priority?: string;
+    sms: {
+      originator: string;
+      ttl?: string;
+      content: { text: string };
+    };
+  }>;
+}
 
 function makeConfig(
   overrides: Record<string, string | undefined> = {},
@@ -26,7 +42,11 @@ function makeConfig(
 }
 
 function okResponse(): Response {
-  return { ok: true, status: 200, text: () => Promise.resolve('OK') } as Response;
+  return {
+    ok: true,
+    status: 200,
+    text: () => Promise.resolve('OK'),
+  } as Response;
 }
 
 describe('WingsSmsSender', () => {
@@ -37,9 +57,9 @@ describe('WingsSmsSender', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
-  function sentBody(): Record<string, any> {
+  function sentBody(): WingsRequestBody {
     const init = fetchMock.mock.calls[0][1]!;
-    return JSON.parse(init.body as string) as Record<string, any>;
+    return JSON.parse(init.body as string) as WingsRequestBody;
   }
 
   it('POSTs to <base-url>/send with Basic auth and JSON content type', async () => {
@@ -58,7 +78,9 @@ describe('WingsSmsSender', () => {
 
   it('tolerates a trailing slash on the base URL', async () => {
     const sender = new WingsSmsSender(
-      makeConfig({ SMS_WINGS_BASE_URL: 'https://smssend.nikita.am/broker-api/' }),
+      makeConfig({
+        SMS_WINGS_BASE_URL: 'https://smssend.nikita.am/broker-api/',
+      }),
     );
     await sender.sendOtp('+37499123456', '123456');
     expect(fetchMock.mock.calls[0][0]).toBe(
@@ -105,10 +127,12 @@ describe('WingsSmsSender', () => {
     await sender.sendOtp('+37499123456', '111111');
     await sender.sendOtp('+37499123456', '222222');
 
-    const id1 = JSON.parse(fetchMock.mock.calls[0][1]!.body as string)
-      .messages[0]['message-id'] as string;
-    const id2 = JSON.parse(fetchMock.mock.calls[1][1]!.body as string)
-      .messages[0]['message-id'] as string;
+    const id1 = (
+      JSON.parse(fetchMock.mock.calls[0][1]!.body as string) as WingsRequestBody
+    ).messages[0]['message-id'];
+    const id2 = (
+      JSON.parse(fetchMock.mock.calls[1][1]!.body as string) as WingsRequestBody
+    ).messages[0]['message-id'];
     expect(id1.length).toBeGreaterThan(0);
     expect(id1.length).toBeLessThanOrEqual(30);
     expect(id2.length).toBeLessThanOrEqual(30);

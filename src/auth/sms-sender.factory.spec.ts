@@ -5,16 +5,13 @@ import { WingsSmsSender } from './wings-sms.sender';
 
 function makeConfig(provider?: string): ConfigService {
   return {
-    get: (key: string) =>
-      key === 'SMS_PROVIDER' ? provider : undefined,
+    get: (key: string) => (key === 'SMS_PROVIDER' ? provider : undefined),
   } as unknown as ConfigService;
 }
 
 describe('createSmsSender', () => {
   it('returns WingsSmsSender for SMS_PROVIDER=wings', () => {
-    expect(createSmsSender(makeConfig('wings'))).toBeInstanceOf(
-      WingsSmsSender,
-    );
+    expect(createSmsSender(makeConfig('wings'))).toBeInstanceOf(WingsSmsSender);
   });
 
   it('normalizes case and whitespace', () => {
@@ -24,8 +21,6 @@ describe('createSmsSender', () => {
   });
 
   it('defaults to DevSmsSender when unset', () => {
-    expect(createSmsSender(makeConfig(undefined))).toBeInstanceOf(
-      DevSmsSender,
-    );
+    expect(createSmsSender(makeConfig(undefined))).toBeInstanceOf(DevSmsSender);
   });
 });
