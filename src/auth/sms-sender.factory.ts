@@ -3,6 +3,7 @@ import { DevSmsSender } from './dev-sms.sender';
 import { HttpWebhookSmsSender } from './http-webhook-sms.sender';
 import type { SmsSender } from './sms-sender.interface';
 import { TwilioSmsSender } from './twilio-sms.sender';
+import { WingsSmsSender } from './wings-sms.sender';
 
 export function createSmsSender(config: ConfigService): SmsSender {
   const raw = (config.get<string>('SMS_PROVIDER') ?? 'dev')
@@ -13,6 +14,9 @@ export function createSmsSender(config: ConfigService): SmsSender {
   }
   if (raw === 'http') {
     return new HttpWebhookSmsSender(config);
+  }
+  if (raw === 'wings') {
+    return new WingsSmsSender(config);
   }
   return new DevSmsSender();
 }
