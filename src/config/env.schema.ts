@@ -42,11 +42,11 @@ export const envSchema = z
     S3_PUBLIC_URL: z.string().optional(),
     /** Expo push (optional). */
     EXPO_ACCESS_TOKEN: z.string().optional(),
-    /** `dev` (log only), `twilio`, or `http` webhook — see docs/decisions.md D-011. */
+    /** `dev` (log only), `twilio`, `http` webhook, or `wings` broker — see docs/decisions.md D-011. */
     SMS_PROVIDER: z.preprocess(
       (v) =>
         v === undefined || v === '' ? 'dev' : String(v).toLowerCase().trim(),
-      z.enum(['dev', 'twilio', 'http']),
+      z.enum(['dev', 'twilio', 'http', 'wings']),
     ),
     SMS_OTP_MESSAGE_TEMPLATE: z.string().optional(),
     TWILIO_ACCOUNT_SID: z.string().optional(),
@@ -58,6 +58,16 @@ export const envSchema = z
     SMS_HTTP_BODY_JSON: z.string().optional(),
     /** Optional JSON object merged into POST headers (e.g. `{"Authorization":"Bearer …"}`). */
     SMS_HTTP_HEADERS_JSON: z.string().optional(),
+    /** WINGS broker (SMS_PROVIDER=wings) — Nikita mobile; POST <base-url>/send, Basic auth. */
+    SMS_WINGS_BASE_URL: z.string().optional(),
+    SMS_WINGS_USERNAME: z.string().optional(),
+    SMS_WINGS_PASSWORD: z.string().optional(),
+    /** Sender name shown on the SMS (e.g. RedAuto). */
+    SMS_WINGS_ORIGINATOR: z.string().optional(),
+    /** Message priority 2|4|6|8 (low|normal|high|realtime); omitted from request when unset. */
+    SMS_WINGS_PRIORITY: z.string().optional(),
+    /** Delivery TTL in seconds; omitted from request when unset. */
+    SMS_WINGS_TTL: z.coerce.number().int().positive().optional(),
     /** Allow `npm run seed` when NODE_ENV=production (dangerous; off by default). */
     ALLOW_DANGEROUS_SEED: boolFromEnv,
     /** Admin email for seed (used by POST /v1/admin/auth/login). */
@@ -109,7 +119,10 @@ export const envSchema = z
           path: ['TEST_PHONE'],
         });
       }
-      if (data.TEST_PHONE_BUYER && data.ALLOW_TEST_PHONES_IN_PRODUCTION !== true) {
+      if (
+        data.TEST_PHONE_BUYER &&
+        data.ALLOW_TEST_PHONES_IN_PRODUCTION !== true
+      ) {
         ctx.addIssue({
           code: 'custom',
           message:
@@ -131,7 +144,7 @@ export const envSchema = z
         ctx.addIssue({
           code: 'custom',
           message:
-            'SMS_PROVIDER must be twilio or http in production (set ALLOW_LOG_ONLY_SMS_IN_PRODUCTION=true only for staging to use log-only OTP)',
+            'SMS_PROVIDER must be twilio, http or wings in production (set ALLOW_LOG_ONLY_SMS_IN_PRODUCTION=true only for staging to use log-only OTP)',
           path: ['SMS_PROVIDER'],
         });
       }
@@ -168,6 +181,23 @@ export const envSchema = z
             message: 'SMS_HTTP_URL is required when SMS_PROVIDER=http',
             path: ['SMS_HTTP_URL'],
           });
+        }
+      }
+      if (data.SMS_PROVIDER === 'wings') {
+        const required = [
+          'SMS_WINGS_BASE_URL',
+          'SMS_WINGS_USERNAME',
+          'SMS_WINGS_PASSWORD',
+          'SMS_WINGS_ORIGINATOR',
+        ] as const;
+        for (const key of required) {
+          if (!data[key]?.trim()) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `${key} is required when SMS_PROVIDER=wings`,
+              path: [key],
+            });
+          }
         }
       }
     }
