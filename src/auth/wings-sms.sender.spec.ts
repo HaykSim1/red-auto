@@ -53,7 +53,9 @@ describe('WingsSmsSender', () => {
   let fetchMock: FetchMock;
 
   beforeEach(() => {
-    fetchMock = jest.fn().mockResolvedValue(okResponse());
+    fetchMock = jest
+      .fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>()
+      .mockResolvedValue(okResponse());
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
