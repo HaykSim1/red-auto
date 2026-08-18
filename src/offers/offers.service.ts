@@ -680,7 +680,8 @@ export class OffersService {
       .andWhere('o.interaction_state != :mc', {
         mc: OfferInteractionState.MUTUALLY_CANCELLED,
       })
-      .orderBy('o.createdAt', 'ASC')
+      .orderBy('o.createdAt', 'DESC')
+      .addOrderBy('o.id', 'DESC')
       .getMany();
 
     const sellerIds = [...new Set(list.map((o) => o.seller.id))];
