@@ -114,6 +114,13 @@ export class MeResponseDto {
 export class HomeSummaryResponseDto {
   @ApiProperty() my_open_requests_count: number;
   @ApiProperty() pending_offers_on_my_requests: number;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      'Request holding the most recent untouched offer; null when there are none.',
+  })
+  latest_pending_offer_request_id: string | null;
   @ApiProperty() my_open_offers_count: number;
 }
 

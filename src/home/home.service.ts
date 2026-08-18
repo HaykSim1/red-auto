@@ -15,6 +15,8 @@ import {
 export type HomeSummaryResponse = {
   my_open_requests_count: number;
   pending_offers_on_my_requests: number;
+  /** Request holding the most recent untouched offer — target of the home tile tap. Null when the count is 0. */
+  latest_pending_offer_request_id: string | null;
   /** Offers the user placed on others’ open requests (sellers and admins). */
   my_open_offers_count: number;
 };
@@ -79,8 +81,27 @@ export class HomeService {
           .getCount()
       : Promise.resolve(0);
 
-    const [myOpenRequestsCount, pendingOffersOnMyRequests, myOpenOffersCount] =
-      await Promise.all([
+    /** Same filters as the pending-offer count, newest first — keep the two in sync. */
+    const latestPendingOfferQuery = this.offers
+      .createQueryBuilder('o')
+      .innerJoin('o.request', 'r')
+      .select('r.id', 'request_id')
+      .where('r.author_id = :uid', { uid: userId })
+      .andWhere('r.status = :st', { st: PartRequestStatus.OPEN })
+      .andWhere('o.interaction_state = :none', {
+        none: OfferInteractionState.NONE,
+      })
+      .orderBy('o.createdAt', 'DESC')
+      .addOrderBy('o.id', 'DESC')
+      .limit(1)
+      .getRawOne<{ request_id: string }>();
+
+    const [
+      myOpenRequestsCount,
+      pendingOffersOnMyRequests,
+      myOpenOffersCount,
+      latestPendingOffer,
+    ] = await Promise.all([
         this.requests.count({
           where: { author: { id: userId }, status: PartRequestStatus.OPEN },
         }),
@@ -94,11 +115,13 @@ export class HomeService {
           })
           .getCount(),
         openOffersQuery,
+        latestPendingOfferQuery,
       ]);
 
     return {
       my_open_requests_count: myOpenRequestsCount,
       pending_offers_on_my_requests: pendingOffersOnMyRequests,
+      latest_pending_offer_request_id: latestPendingOffer?.request_id ?? null,
       my_open_offers_count: myOpenOffersCount,
     };
   }
