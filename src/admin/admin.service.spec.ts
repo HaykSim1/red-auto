@@ -10,6 +10,7 @@ import { HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ApiException } from '../common/exceptions/api.exception';
 import { AppVersionConfig } from '../database/entities/app-version-config.entity';
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
@@ -307,7 +308,11 @@ describe('AdminService.getRequestDetail', () => {
 
     await expect(service.getRequestDetail('missing-id')).rejects.toMatchObject({
       status: HttpStatus.NOT_FOUND,
+      code: 'not_found',
     });
+    await expect(service.getRequestDetail('missing-id')).rejects.toBeInstanceOf(
+      ApiException,
+    );
   });
 
   it('returns null vehicle and an empty photos array when both are absent', async () => {
@@ -336,6 +341,30 @@ describe('AdminService.getRequestDetail', () => {
     expect(out.active_acceptance_offer_id).toBeNull();
   });
 
+  it('carries the active acceptance offer id when one is set', async () => {
+    requestsRepo.findOne.mockResolvedValue({
+      id: 'r1',
+      description: 'd',
+      vinText: null,
+      partNumber: null,
+      quantity: 1,
+      city: null,
+      region: 'AM',
+      status: 'open',
+      moderationState: 'visible',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      author: { id: 'u1', phone: '+37411', displayName: null },
+      vehicle: null,
+      photos: [],
+      activeAcceptanceOffer: { id: 'o-42' },
+    });
+
+    const out = await service.getRequestDetail('r1');
+
+    expect(out.active_acceptance_offer_id).toBe('o-42');
+  });
+
   it('orders photos by sort_order', async () => {
     requestsRepo.findOne.mockResolvedValue({
       id: 'r1',
@@ -352,14 +381,23 @@ describe('AdminService.getRequestDetail', () => {
       author: { id: 'u1', phone: '+37411', displayName: null },
       vehicle: null,
       activeAcceptanceOffer: null,
+      // Deliberately neither ascending nor descending, so a `.reverse()`, a
+      // no-op, or a descending comparator would each produce an order
+      // distinguishable from the correct ascending one — unlike a simple
+      // two-element reversed pair, which a `.reverse()` would also satisfy.
       photos: [
-        { storageKey: 'b.jpg', sortOrder: 2 },
-        { storageKey: 'a.jpg', sortOrder: 1 },
+        { storageKey: 'mid.jpg', sortOrder: 2 },
+        { storageKey: 'low.jpg', sortOrder: 1 },
+        { storageKey: 'high.jpg', sortOrder: 3 },
       ],
     });
 
     const out = await service.getRequestDetail('r1');
 
-    expect(out.photos.map((p) => p.storage_key)).toEqual(['a.jpg', 'b.jpg']);
+    expect(out.photos.map((p) => p.storage_key)).toEqual([
+      'low.jpg',
+      'mid.jpg',
+      'high.jpg',
+    ]);
   });
 });
