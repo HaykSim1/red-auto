@@ -567,6 +567,18 @@ describe('AdminService.listRequestOffers', () => {
       'mid.jpg',
       'high.jpg',
     ]);
+    // The mocked `findAndCount` ignores its argument entirely, so without
+    // this assertion a missing/wrong `where` (or dropped pagination/
+    // ordering) would still return the mocked rows and every other
+    // assertion here would keep passing. Assert the call itself.
+    expect(offersRepo.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { request: { id: 'r1' } },
+        take: 50,
+        skip: 0,
+        order: { createdAt: 'DESC' },
+      }),
+    );
   });
 
   it('does not mutate the entity photos array while sorting', async () => {
