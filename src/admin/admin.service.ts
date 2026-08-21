@@ -21,6 +21,24 @@ function previewText(text: string | null | undefined, max: number): string {
   return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
 }
 
+export type VehicleLabelParts = {
+  label: string | null;
+  brand: string | null;
+  model: string | null;
+  year: number | null;
+  engine: string | null;
+};
+
+export function vehicleLabel(v: VehicleLabelParts | null): string | null {
+  if (!v) return null;
+  const explicit = v.label?.trim();
+  if (explicit) return explicit;
+  const composed = [v.year, v.brand, v.model, v.engine]
+    .filter((p) => p !== null && p !== undefined && String(p).trim() !== '')
+    .join(' ');
+  return composed || null;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -169,11 +187,13 @@ export class AdminService {
 
   async listRequests(limit: number, offset: number) {
     const [rows, total] = await this.requests.findAndCount({
-      relations: { author: true },
+      relations: { author: true, vehicle: true, photos: true },
       order: { createdAt: 'DESC' },
       take: Math.min(limit, 100),
       skip: offset,
     });
+    const ids = rows.map((r) => r.id);
+    const counts = await this.offerCountsByRequest(ids);
     return {
       total,
       items: rows.map((r) => ({
@@ -185,8 +205,27 @@ export class AdminService {
         status: r.status,
         moderation_state: r.moderationState,
         created_at: r.createdAt.toISOString(),
+        first_photo_key:
+          [...(r.photos ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)[0]
+            ?.storageKey ?? null,
+        vehicle_label: vehicleLabel(r.vehicle),
+        offers_count: counts.get(r.id) ?? 0,
       })),
     };
+  }
+
+  private async offerCountsByRequest(
+    ids: string[],
+  ): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.offers
+      .createQueryBuilder('o')
+      .select('o.request_id', 'request_id')
+      .addSelect('COUNT(*)', 'count')
+      .where('o.request_id IN (:...ids)', { ids })
+      .groupBy('o.request_id')
+      .getRawMany<{ request_id: string; count: string }>();
+    return new Map(rows.map((r) => [r.request_id, Number(r.count)]));
   }
 
   async patchRequest(id: string, dto: PatchModerationDto) {
