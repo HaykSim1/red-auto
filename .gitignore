@@ -19,3 +19,6 @@ build/
 # Logs / coverage
 coverage/
 *.log
+
+# Git worktrees
+.worktrees/
