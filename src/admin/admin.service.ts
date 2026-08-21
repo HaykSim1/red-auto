@@ -298,6 +298,23 @@ export class AdminService {
     return { id: r.id, moderation_state: r.moderationState };
   }
 
+  // Shared by `listOffers` (GET /admin/offers, consumed by the mobile app —
+  // must not change) and `listRequestOffers` (Task 3). Extracted rather than
+  // duplicated; keep both callers' output byte-identical to before this
+  // extraction.
+  private offerTitle(o: {
+    seller: { displayName: string | null; phone: string };
+    variantLabel: string | null;
+    priceAmount: string;
+  }): string {
+    const sellerLabel = o.seller.displayName?.trim() || o.seller.phone;
+    const label = o.variantLabel?.trim();
+    const priceBit = `${o.priceAmount} AMD`;
+    return label
+      ? `${sellerLabel} · ${label} · ${priceBit}`
+      : `${sellerLabel} · ${priceBit}`;
+  }
+
   async listOffers(limit: number, offset: number) {
     const [rows, total] = await this.offers.findAndCount({
       relations: { request: true, seller: true },
@@ -307,26 +324,56 @@ export class AdminService {
     });
     return {
       total,
-      items: rows.map((o) => {
-        const label = o.variantLabel?.trim();
-        const priceBit = `${o.priceAmount} AMD`;
-        const title = label
-          ? `${o.seller.displayName?.trim() || o.seller.phone} · ${label} · ${priceBit}`
-          : `${o.seller.displayName?.trim() || o.seller.phone} · ${priceBit}`;
-        return {
-          id: o.id,
-          request_id: o.request.id,
-          seller_id: o.seller.id,
-          title,
-          request_summary:
-            previewText(o.request.description, 100) || '(No description)',
-          seller_label: o.seller.displayName?.trim() || o.seller.phone,
-          moderation_state: o.moderationState,
-          price_amount: o.priceAmount,
-          variant_label: o.variantLabel,
-          created_at: o.createdAt.toISOString(),
-        };
-      }),
+      items: rows.map((o) => ({
+        id: o.id,
+        request_id: o.request.id,
+        seller_id: o.seller.id,
+        title: this.offerTitle(o),
+        request_summary:
+          previewText(o.request.description, 100) || '(No description)',
+        seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        moderation_state: o.moderationState,
+        price_amount: o.priceAmount,
+        variant_label: o.variantLabel,
+        created_at: o.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async listRequestOffers(requestId: string, limit: number, offset: number) {
+    const parent = await this.requests.findOne({ where: { id: requestId } });
+    if (!parent) {
+      throw new ApiException(
+        'not_found',
+        'Request not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const [rows, total] = await this.offers.findAndCount({
+      where: { request: { id: requestId } },
+      relations: { request: true, seller: true, photos: true },
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return {
+      total,
+      items: rows.map((o) => ({
+        id: o.id,
+        request_id: o.request.id,
+        seller_id: o.seller.id,
+        title: this.offerTitle(o),
+        request_summary:
+          previewText(o.request.description, 100) || '(No description)',
+        seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        moderation_state: o.moderationState,
+        price_amount: o.priceAmount,
+        variant_label: o.variantLabel,
+        created_at: o.createdAt.toISOString(),
+        photos: [...(o.photos ?? [])]
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((p) => ({ storage_key: p.storageKey, sort_order: p.sortOrder })),
+      })),
     };
   }
 

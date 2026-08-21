@@ -401,3 +401,203 @@ describe('AdminService.getRequestDetail', () => {
     ]);
   });
 });
+
+// Pins `listOffers`' title/label output BEFORE the `offerTitle` extraction
+// (Task 3) so the refactor is provably a no-op for this endpoint's response
+// shape. `listOffers` serves `GET /admin/offers`, consumed by the mobile
+// app, and this feature must not change its output.
+describe('AdminService.listOffers', () => {
+  let service: AdminService;
+  let offersRepo: { findAndCount: jest.Mock };
+
+  const mockOfferRow = (overrides: Record<string, unknown> = {}) => ({
+    id: 'offer-1',
+    request: { id: 'request-1', description: 'Need a part' },
+    seller: { id: 'seller-1', phone: '+37411000000', displayName: 'Shop One' },
+    moderationState: 'visible',
+    priceAmount: '15000',
+    variantLabel: 'OEM',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        {
+          provide: getRepositoryToken(Offer),
+          useValue: { findAndCount: jest.fn() },
+        },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    offersRepo = module.get(getRepositoryToken(Offer));
+  });
+
+  it('builds the title as "displayName · variantLabel · price AMD" when both are present', async () => {
+    const row = mockOfferRow();
+    offersRepo.findAndCount.mockResolvedValue([[row], 1]);
+
+    const result = await service.listOffers(50, 0);
+
+    expect(result.items[0].title).toBe('Shop One · OEM · 15000 AMD');
+    expect(result.items[0].seller_label).toBe('Shop One');
+  });
+
+  it('falls back to phone when displayName is empty/whitespace after trim', async () => {
+    const row = mockOfferRow({
+      seller: { id: 'seller-1', phone: '+37411000000', displayName: '   ' },
+    });
+    offersRepo.findAndCount.mockResolvedValue([[row], 1]);
+
+    const result = await service.listOffers(50, 0);
+
+    expect(result.items[0].title).toBe('+37411000000 · OEM · 15000 AMD');
+    expect(result.items[0].seller_label).toBe('+37411000000');
+  });
+
+  it('omits the variant label segment when variantLabel is null', async () => {
+    const row = mockOfferRow({ variantLabel: null });
+    offersRepo.findAndCount.mockResolvedValue([[row], 1]);
+
+    const result = await service.listOffers(50, 0);
+
+    expect(result.items[0].title).toBe('Shop One · 15000 AMD');
+  });
+
+  it('does not include a photos field in its output', async () => {
+    const row = mockOfferRow();
+    offersRepo.findAndCount.mockResolvedValue([[row], 1]);
+
+    const result = await service.listOffers(50, 0);
+
+    expect(result.items[0]).not.toHaveProperty('photos');
+  });
+});
+
+describe('AdminService.listRequestOffers', () => {
+  let service: AdminService;
+  let requestsRepo: { findOne: jest.Mock };
+  let offersRepo: { findAndCount: jest.Mock };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(User), useValue: {} },
+        {
+          provide: getRepositoryToken(PartRequest),
+          useValue: { findOne: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(Offer),
+          useValue: { findAndCount: jest.fn() },
+        },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    requestsRepo = module.get(getRepositoryToken(PartRequest));
+    offersRepo = module.get(getRepositoryToken(Offer));
+  });
+
+  it('throws a 404 when the parent request does not exist', async () => {
+    requestsRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.listRequestOffers('missing', 50, 0),
+    ).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+    await expect(
+      service.listRequestOffers('missing', 50, 0),
+    ).rejects.toBeInstanceOf(ApiException);
+  });
+
+  it('returns an empty page when the request has no offers', async () => {
+    requestsRepo.findOne.mockResolvedValue({ id: 'r1' });
+    offersRepo.findAndCount.mockResolvedValue([[], 0]);
+
+    await expect(service.listRequestOffers('r1', 50, 0)).resolves.toEqual({
+      total: 0,
+      items: [],
+    });
+  });
+
+  it('includes photos ordered by sort_order, given photos in non-monotonic order', async () => {
+    requestsRepo.findOne.mockResolvedValue({ id: 'r1' });
+    offersRepo.findAndCount.mockResolvedValue([
+      [
+        {
+          id: 'o1',
+          request: { id: 'r1', description: 'desc' },
+          seller: { id: 's1', phone: '+37411', displayName: 'Shop' },
+          moderationState: 'visible',
+          priceAmount: '1000',
+          variantLabel: null,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          // Deliberately non-monotonic (2, 1, 3) with distinguishable keys,
+          // so neither a naive `.reverse()` nor a no-op nor a descending
+          // sort could accidentally pass this assertion the way a simple
+          // two-element reversed pair could.
+          photos: [
+            { storageKey: 'mid.jpg', sortOrder: 2 },
+            { storageKey: 'low.jpg', sortOrder: 1 },
+            { storageKey: 'high.jpg', sortOrder: 3 },
+          ],
+        },
+      ],
+      1,
+    ]);
+
+    const out = await service.listRequestOffers('r1', 50, 0);
+
+    expect(out.items[0].photos.map((p) => p.storage_key)).toEqual([
+      'low.jpg',
+      'mid.jpg',
+      'high.jpg',
+    ]);
+  });
+
+  it('does not mutate the entity photos array while sorting', async () => {
+    const entityPhotos = [
+      { storageKey: 'mid.jpg', sortOrder: 2 },
+      { storageKey: 'low.jpg', sortOrder: 1 },
+      { storageKey: 'high.jpg', sortOrder: 3 },
+    ];
+    requestsRepo.findOne.mockResolvedValue({ id: 'r1' });
+    offersRepo.findAndCount.mockResolvedValue([
+      [
+        {
+          id: 'o1',
+          request: { id: 'r1', description: 'desc' },
+          seller: { id: 's1', phone: '+37411', displayName: 'Shop' },
+          moderationState: 'visible',
+          priceAmount: '1000',
+          variantLabel: null,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          photos: entityPhotos,
+        },
+      ],
+      1,
+    ]);
+
+    await service.listRequestOffers('r1', 50, 0);
+
+    expect(entityPhotos.map((p) => p.storageKey)).toEqual([
+      'mid.jpg',
+      'low.jpg',
+      'high.jpg',
+    ]);
+  });
+});

@@ -741,3 +741,33 @@ export class AdminRequestDetailResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true })
   active_acceptance_offer_id: string | null;
 }
+
+// ── Admin: Request offers ──
+
+export class AdminRequestOfferPhotoDto {
+  @ApiProperty() storage_key: string;
+  @ApiProperty() sort_order: number;
+}
+
+export class AdminRequestOfferRowDto {
+  @ApiProperty() id: string;
+  @ApiProperty() request_id: string;
+  @ApiProperty() seller_id: string;
+  @ApiProperty() title: string;
+  @ApiProperty() request_summary: string;
+  @ApiProperty() seller_label: string;
+  @ApiProperty() moderation_state: string;
+  @ApiProperty() price_amount: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) variant_label:
+    | string
+    | null;
+  @ApiProperty() created_at: string;
+  @ApiProperty({ type: [AdminRequestOfferPhotoDto] })
+  photos: AdminRequestOfferPhotoDto[];
+}
+
+export class AdminRequestOffersResponseDto {
+  @ApiProperty({ type: [AdminRequestOfferRowDto] })
+  items: AdminRequestOfferRowDto[];
+  @ApiProperty() total: number;
+}

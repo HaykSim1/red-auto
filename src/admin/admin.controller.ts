@@ -30,6 +30,7 @@ import {
   AdminFeaturedShopListDto,
   AdminHomeBannerListDto,
   AdminRequestDetailResponseDto,
+  AdminRequestOffersResponseDto,
   AdminSpecialBuyerResponseDto,
   AuthOtpVerifyResponseDto,
   HomeBannerItemDto,
@@ -124,6 +125,21 @@ export class AdminController {
     @Body() dto: PatchModerationDto,
   ) {
     return this.admin.patchRequest(id, dto);
+  }
+
+  @Get('requests/:id/offers')
+  @ApiOperation({ summary: "List a request's offers" })
+  @ApiOkResponse({ type: AdminRequestOffersResponseDto })
+  listRequestOffers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ) {
+    return this.admin.listRequestOffers(
+      id,
+      Math.min(Math.max(limit, 1), 100),
+      offset,
+    );
   }
 
   @Get('offers')
