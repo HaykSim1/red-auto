@@ -218,6 +218,11 @@ export class AdminService {
     ids: string[],
   ): Promise<Map<string, number>> {
     if (ids.length === 0) return new Map();
+    // 'o.request_id' below is the raw DB column (see `@JoinColumn({ name:
+    // 'request_id' })` on `Offer.request`), referenced as raw SQL rather
+    // than the `request` entity property — TypeORM finds no matching
+    // property and falls through to treating it as a column name. If that
+    // column is ever renamed, this string must be updated to match.
     const rows = await this.offers
       .createQueryBuilder('o')
       .select('o.request_id', 'request_id')

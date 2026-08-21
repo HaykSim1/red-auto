@@ -6,7 +6,17 @@ jest.mock('../push/push.service', () => ({
   PushService: jest.fn(),
 }));
 
-import { vehicleLabel } from './admin.service';
+import { JwtService } from '@nestjs/jwt';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { AppVersionConfig } from '../database/entities/app-version-config.entity';
+import { Offer } from '../database/entities/offer.entity';
+import { PartRequest } from '../database/entities/part-request.entity';
+import { SellerApplication } from '../database/entities/seller-application.entity';
+import { User } from '../database/entities/user.entity';
+import { PartRequestStatus, ModerationState } from '../database/enums';
+import { PushService } from '../push/push.service';
+import { AdminService, vehicleLabel } from './admin.service';
 
 describe('AdminService.listRequests', () => {
   it('derives vehicle_label from label when present', () => {
@@ -59,5 +69,187 @@ describe('AdminService.listRequests', () => {
         engine: null,
       }),
     ).toBeNull();
+  });
+});
+
+const mockRequestRow = (overrides: Partial<PartRequest> = {}): PartRequest =>
+  ({
+    id: 'request-uuid-1',
+    author: { id: 'author-uuid-1', displayName: 'Author One' },
+    vehicle: null,
+    description: 'Need a part',
+    vinText: null,
+    partNumber: null,
+    quantity: 1,
+    city: null,
+    status: PartRequestStatus.OPEN,
+    region: 'AM',
+    moderationState: ModerationState.VISIBLE,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    photos: [],
+    activeAcceptanceOffer: null,
+    ...overrides,
+  }) as PartRequest;
+
+describe('AdminService.listRequests (wiring)', () => {
+  let service: AdminService;
+  // Typed as plain mock-shaped objects (not `jest.Mocked<Repository<...>>`)
+  // so `expect(offersRepo.createQueryBuilder).not.toHaveBeenCalled()` isn't
+  // flagged by `@typescript-eslint/unbound-method` — that rule fires on
+  // references to methods declared on a class/interface, which the
+  // `Repository` type would otherwise carry.
+  let requestsRepo: { findAndCount: jest.Mock };
+  let offersRepo: { createQueryBuilder: jest.Mock };
+
+  // Chainable query-builder mock matching the `select/addSelect/where/
+  // groupBy/getRawMany` chain used by `offerCountsByRequest`.
+  const mockQueryBuilder = (
+    rawRows: { request_id: string; count: string }[],
+  ) => ({
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue(rawRows),
+  });
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(PartRequest),
+          useValue: {
+            findAndCount: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Offer),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(SellerApplication),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(AppVersionConfig),
+          useValue: {},
+        },
+        {
+          provide: PushService,
+          useValue: { sendTestToUser: jest.fn() },
+        },
+        {
+          provide: JwtService,
+          useValue: { signAsync: jest.fn() },
+        },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    requestsRepo = module.get(getRepositoryToken(PartRequest));
+    offersRepo = module.get(getRepositoryToken(Offer));
+  });
+
+  it('picks the storage_key of the photo with the lowest sort_order, given photos out of order', async () => {
+    const row = mockRequestRow({
+      photos: [
+        { id: 'p-high', storageKey: 'high', sortOrder: 5 } as never,
+        { id: 'p-low', storageKey: 'low', sortOrder: 1 } as never,
+        { id: 'p-mid', storageKey: 'mid', sortOrder: 3 } as never,
+      ],
+    });
+    requestsRepo.findAndCount.mockResolvedValue([[row], 1]);
+    offersRepo.createQueryBuilder.mockReturnValue(
+      mockQueryBuilder([]) as never,
+    );
+
+    const result = await service.listRequests(20, 0);
+
+    expect(result.items[0].first_photo_key).toBe('low');
+  });
+
+  it('returns null first_photo_key when the request has no photos', async () => {
+    const row = mockRequestRow({ photos: [] });
+    requestsRepo.findAndCount.mockResolvedValue([[row], 1]);
+    offersRepo.createQueryBuilder.mockReturnValue(
+      mockQueryBuilder([]) as never,
+    );
+
+    const result = await service.listRequests(20, 0);
+
+    expect(result.items[0].first_photo_key).toBeNull();
+  });
+
+  it('does not reorder the entity photos array while picking first_photo_key', async () => {
+    // Deliberately neither ascending nor descending by sortOrder, so a
+    // sort in either direction would visibly change this order — the test
+    // can't pass by accident regardless of comparator direction.
+    const row = mockRequestRow({
+      photos: [
+        { id: 'p-mid', storageKey: 'mid', sortOrder: 2 } as never,
+        { id: 'p-low', storageKey: 'low', sortOrder: 1 } as never,
+        { id: 'p-high', storageKey: 'high', sortOrder: 3 } as never,
+      ],
+    });
+    requestsRepo.findAndCount.mockResolvedValue([[row], 1]);
+    offersRepo.createQueryBuilder.mockReturnValue(
+      mockQueryBuilder([]) as never,
+    );
+
+    await service.listRequests(20, 0);
+
+    expect(row.photos.map((p) => p.storageKey)).toEqual(['mid', 'low', 'high']);
+  });
+
+  it('defaults offers_count to 0 for a request absent from the counts result, and to the real count for one present', async () => {
+    const rowWithOffers = mockRequestRow({ id: 'request-with-offers' });
+    const rowWithoutOffers = mockRequestRow({ id: 'request-without-offers' });
+    requestsRepo.findAndCount.mockResolvedValue([
+      [rowWithOffers, rowWithoutOffers],
+      2,
+    ]);
+    offersRepo.createQueryBuilder.mockReturnValue(
+      mockQueryBuilder([
+        { request_id: 'request-with-offers', count: '3' },
+      ]) as never,
+    );
+
+    const result = await service.listRequests(20, 0);
+
+    expect(
+      result.items.find((i) => i.id === 'request-with-offers')?.offers_count,
+    ).toBe(3);
+    expect(
+      result.items.find((i) => i.id === 'request-without-offers')?.offers_count,
+    ).toBe(0);
+  });
+
+  it('sets vehicle_label to null end-to-end when vehicle is null', async () => {
+    const row = mockRequestRow({ vehicle: null });
+    requestsRepo.findAndCount.mockResolvedValue([[row], 1]);
+    offersRepo.createQueryBuilder.mockReturnValue(
+      mockQueryBuilder([]) as never,
+    );
+
+    const result = await service.listRequests(20, 0);
+
+    expect(result.items[0].vehicle_label).toBeNull();
+  });
+
+  it('does not invoke the offers query builder at all for an empty page', async () => {
+    requestsRepo.findAndCount.mockResolvedValue([[], 0]);
+
+    const result = await service.listRequests(20, 0);
+
+    expect(offersRepo.createQueryBuilder).not.toHaveBeenCalled();
+    expect(result).toEqual({ total: 0, items: [] });
   });
 });
