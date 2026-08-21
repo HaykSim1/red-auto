@@ -6,6 +6,7 @@ jest.mock('../push/push.service', () => ({
   PushService: jest.fn(),
 }));
 
+import { HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -251,5 +252,114 @@ describe('AdminService.listRequests (wiring)', () => {
 
     expect(offersRepo.createQueryBuilder).not.toHaveBeenCalled();
     expect(result).toEqual({ total: 0, items: [] });
+  });
+});
+
+describe('AdminService.getRequestDetail', () => {
+  let service: AdminService;
+  // Typed as a plain mock-shaped object (not `jest.Mocked<Repository<...>>`)
+  // for the same `@typescript-eslint/unbound-method` reason noted above.
+  let requestsRepo: { findOne: jest.Mock };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(PartRequest),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Offer),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(SellerApplication),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(AppVersionConfig),
+          useValue: {},
+        },
+        {
+          provide: PushService,
+          useValue: { sendTestToUser: jest.fn() },
+        },
+        {
+          provide: JwtService,
+          useValue: { signAsync: jest.fn() },
+        },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    requestsRepo = module.get(getRepositoryToken(PartRequest));
+  });
+
+  it('throws a 404 ApiException when the request does not exist', async () => {
+    requestsRepo.findOne.mockResolvedValue(null);
+
+    await expect(service.getRequestDetail('missing-id')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+    });
+  });
+
+  it('returns null vehicle and an empty photos array when both are absent', async () => {
+    requestsRepo.findOne.mockResolvedValue({
+      id: 'r1',
+      description: 'd',
+      vinText: null,
+      partNumber: null,
+      quantity: 1,
+      city: null,
+      region: 'AM',
+      status: 'open',
+      moderationState: 'visible',
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      author: { id: 'u1', phone: '+37411', displayName: null },
+      vehicle: null,
+      photos: [],
+      activeAcceptanceOffer: null,
+    });
+
+    const out = await service.getRequestDetail('r1');
+
+    expect(out.vehicle).toBeNull();
+    expect(out.photos).toEqual([]);
+    expect(out.active_acceptance_offer_id).toBeNull();
+  });
+
+  it('orders photos by sort_order', async () => {
+    requestsRepo.findOne.mockResolvedValue({
+      id: 'r1',
+      description: 'd',
+      vinText: null,
+      partNumber: null,
+      quantity: 1,
+      city: null,
+      region: 'AM',
+      status: 'open',
+      moderationState: 'visible',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      author: { id: 'u1', phone: '+37411', displayName: null },
+      vehicle: null,
+      activeAcceptanceOffer: null,
+      photos: [
+        { storageKey: 'b.jpg', sortOrder: 2 },
+        { storageKey: 'a.jpg', sortOrder: 1 },
+      ],
+    });
+
+    const out = await service.getRequestDetail('r1');
+
+    expect(out.photos.map((p) => p.storage_key)).toEqual(['a.jpg', 'b.jpg']);
   });
 });

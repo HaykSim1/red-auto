@@ -691,3 +691,53 @@ export class AdminAnalyticsSeriesResponseDto {
 export class AdminAnalyticsRebuildResponseDto {
   @ApiProperty() days_processed: number;
 }
+
+// ── Admin: Request detail ──
+
+export class AdminRequestDetailAuthorDto {
+  @ApiProperty() id: string;
+  @ApiProperty() phone: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) display_name:
+    | string
+    | null;
+}
+
+export class AdminRequestDetailVehicleDto {
+  @ApiPropertyOptional({ type: String, nullable: true }) brand: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) model: string | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) year: number | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) engine: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) vin: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) label: string | null;
+}
+
+export class AdminRequestDetailPhotoDto {
+  @ApiProperty() storage_key: string;
+  @ApiProperty() sort_order: number;
+}
+
+export class AdminRequestDetailResponseDto {
+  @ApiProperty() id: string;
+  @ApiProperty() description: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) vin_text:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) part_number:
+    | string
+    | null;
+  @ApiProperty() quantity: number;
+  @ApiPropertyOptional({ type: String, nullable: true }) city: string | null;
+  @ApiProperty() region: string;
+  @ApiProperty() status: string;
+  @ApiProperty() moderation_state: string;
+  @ApiProperty() created_at: string;
+  @ApiProperty() updated_at: string;
+  @ApiProperty({ type: () => AdminRequestDetailAuthorDto })
+  author: AdminRequestDetailAuthorDto;
+  @ApiProperty({ type: () => AdminRequestDetailVehicleDto, nullable: true })
+  vehicle: AdminRequestDetailVehicleDto | null;
+  @ApiProperty({ type: [AdminRequestDetailPhotoDto] })
+  photos: AdminRequestDetailPhotoDto[];
+  @ApiPropertyOptional({ type: String, nullable: true })
+  active_acceptance_offer_id: string | null;
+}

@@ -233,6 +233,57 @@ export class AdminService {
     return new Map(rows.map((r) => [r.request_id, Number(r.count)]));
   }
 
+  async getRequestDetail(id: string) {
+    const r = await this.requests.findOne({
+      where: { id },
+      relations: {
+        author: true,
+        vehicle: true,
+        photos: true,
+        activeAcceptanceOffer: true,
+      },
+    });
+    if (!r) {
+      throw new ApiException(
+        'not_found',
+        'Request not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return {
+      id: r.id,
+      description: r.description,
+      vin_text: r.vinText,
+      part_number: r.partNumber,
+      quantity: r.quantity,
+      city: r.city,
+      region: r.region,
+      status: r.status,
+      moderation_state: r.moderationState,
+      created_at: r.createdAt.toISOString(),
+      updated_at: r.updatedAt.toISOString(),
+      author: {
+        id: r.author.id,
+        phone: r.author.phone,
+        display_name: r.author.displayName,
+      },
+      vehicle: r.vehicle
+        ? {
+            brand: r.vehicle.brand,
+            model: r.vehicle.model,
+            year: r.vehicle.year,
+            engine: r.vehicle.engine,
+            vin: r.vehicle.vin,
+            label: r.vehicle.label,
+          }
+        : null,
+      photos: [...(r.photos ?? [])]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((p) => ({ storage_key: p.storageKey, sort_order: p.sortOrder })),
+      active_acceptance_offer_id: r.activeAcceptanceOffer?.id ?? null,
+    };
+  }
+
   async patchRequest(id: string, dto: PatchModerationDto) {
     const r = await this.requests.findOne({ where: { id } });
     if (!r) {

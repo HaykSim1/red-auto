@@ -29,6 +29,7 @@ import { RejectSellerApplicationDto } from '../seller-applications/dto/reject-se
 import {
   AdminFeaturedShopListDto,
   AdminHomeBannerListDto,
+  AdminRequestDetailResponseDto,
   AdminSpecialBuyerResponseDto,
   AuthOtpVerifyResponseDto,
   HomeBannerItemDto,
@@ -107,6 +108,13 @@ export class AdminController {
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ) {
     return this.admin.listRequests(Math.min(Math.max(limit, 1), 100), offset);
+  }
+
+  @Get('requests/:id')
+  @ApiOperation({ summary: 'Get request detail' })
+  @ApiOkResponse({ type: AdminRequestDetailResponseDto })
+  getRequestDetail(@Param('id', ParseUUIDPipe) id: string) {
+    return this.admin.getRequestDetail(id);
   }
 
   @Patch('requests/:id')
