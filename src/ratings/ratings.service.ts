@@ -5,7 +5,7 @@ import { ApiException } from '../common/exceptions/api.exception';
 import { SellerRating } from '../database/entities/seller-rating.entity';
 import { SellerRatingAggregate } from '../database/entities/seller-rating-aggregate.entity';
 import { User } from '../database/entities/user.entity';
-import { UserRole } from '../database/enums';
+import { ModerationState, UserRole } from '../database/enums';
 import { CreateRatingDto } from './dto/create-rating.dto';
 
 const COOLDOWN_DAYS = 10;
@@ -79,12 +79,14 @@ export class RatingsService {
     };
   }
 
-  private async refreshAggregate(sellerId: string): Promise<void> {
+  /** Public: the admin moderation route calls this after hiding/showing a rating. */
+  async refreshAggregate(sellerId: string): Promise<void> {
     const raw = await this.ratings
       .createQueryBuilder('r')
       .select('COUNT(*)', 'cnt')
       .addSelect('AVG(r.score)', 'avg')
       .where('r.seller_id = :sid', { sid: sellerId })
+      .andWhere('r.moderation_state = :ms', { ms: ModerationState.VISIBLE })
       .getRawOne<{ cnt: string; avg: string }>();
 
     const ratingCount = Number(raw?.cnt ?? 0);
