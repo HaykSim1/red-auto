@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { ModerationState } from '../enums';
 import { PartRequest } from './part-request.entity';
 import { User } from './user.entity';
 
@@ -34,4 +35,13 @@ export class SellerRating {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
+
+  @Column({
+    type: 'enum',
+    enum: ModerationState,
+    enumName: 'moderation_state_enum',
+    default: ModerationState.VISIBLE,
+    name: 'moderation_state',
+  })
+  moderationState: ModerationState;
 }
