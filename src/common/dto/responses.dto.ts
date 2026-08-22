@@ -388,6 +388,24 @@ export class AdminFeaturedShopRowDto {
   @ApiProperty() rating_count: number;
   @ApiProperty() is_featured: boolean;
   @ApiProperty() created_at: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) display_name:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_address:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_logo_storage_key:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_phone:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_telegram:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) blocked_at:
+    | string
+    | null;
 }
 
 export class AdminFeaturedShopListDto {

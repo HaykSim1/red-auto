@@ -541,6 +541,14 @@ export class AdminService {
           rating_count: agg?.rating_count ?? 0,
           is_featured: u.isFeatured,
           created_at: u.createdAt.toISOString(),
+          // Shop profile fields for the admin Shops card grid. All live on the
+          // User row already loaded above — no extra query, no join.
+          display_name: u.displayName ?? null,
+          shop_address: u.shopAddress ?? null,
+          shop_logo_storage_key: u.shopLogoStorageKey ?? null,
+          seller_phone: u.sellerPhone ?? null,
+          seller_telegram: u.sellerTelegram ?? null,
+          blocked_at: u.blockedAt ? u.blockedAt.toISOString() : null,
         };
       }),
     };

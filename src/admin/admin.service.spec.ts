@@ -613,3 +613,122 @@ describe('AdminService.listRequestOffers', () => {
     ]);
   });
 });
+
+describe('AdminService.listFeaturedShops', () => {
+  let service: AdminService;
+  let usersRepo: { findAndCount: jest.Mock; query: jest.Mock };
+
+  const mockSeller = (overrides: Record<string, unknown> = {}) => ({
+    id: 'seller-1',
+    phone: '+37411000000',
+    displayName: 'Ashot',
+    shopName: 'AutoParts AM',
+    shopAddress: 'Yerevan, Komitas 5',
+    shopLogoStorageKey: 'shops/logo-1.png',
+    sellerPhone: '+37499111222',
+    sellerTelegram: '@autoparts',
+    isFeatured: true,
+    blockedAt: null,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: { findAndCount: jest.fn(), query: jest.fn() },
+        },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        { provide: getRepositoryToken(Offer), useValue: {} },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    usersRepo = module.get(getRepositoryToken(User));
+  });
+
+  it('returns the shop profile fields the admin card needs', async () => {
+    usersRepo.findAndCount.mockResolvedValue([[mockSeller()], 1]);
+    usersRepo.query.mockResolvedValue([]);
+
+    const out = await service.listFeaturedShops(50, 0);
+
+    expect(out.items[0]).toMatchObject({
+      shop_address: 'Yerevan, Komitas 5',
+      shop_logo_storage_key: 'shops/logo-1.png',
+      seller_phone: '+37499111222',
+      seller_telegram: '@autoparts',
+      display_name: 'Ashot',
+      blocked_at: null,
+    });
+  });
+
+  it('emits blocked_at as an ISO string when the seller is blocked', async () => {
+    usersRepo.findAndCount.mockResolvedValue([
+      [mockSeller({ blockedAt: new Date('2026-02-03T04:05:06.000Z') })],
+      1,
+    ]);
+    usersRepo.query.mockResolvedValue([]);
+
+    const out = await service.listFeaturedShops(50, 0);
+
+    expect(out.items[0].blocked_at).toBe('2026-02-03T04:05:06.000Z');
+  });
+
+  it('renders every optional profile field as null when unset, never undefined', async () => {
+    usersRepo.findAndCount.mockResolvedValue([
+      [
+        mockSeller({
+          shopAddress: null,
+          shopLogoStorageKey: null,
+          sellerPhone: null,
+          sellerTelegram: null,
+          displayName: null,
+        }),
+      ],
+      1,
+    ]);
+    usersRepo.query.mockResolvedValue([]);
+
+    const out = await service.listFeaturedShops(50, 0);
+    const item = out.items[0];
+
+    for (const key of [
+      'shop_address',
+      'shop_logo_storage_key',
+      'seller_phone',
+      'seller_telegram',
+      'display_name',
+    ] as const) {
+      expect(item[key]).toBeNull();
+      expect(item).toHaveProperty(key);
+    }
+  });
+
+  it('keeps the pre-existing fields intact', async () => {
+    usersRepo.findAndCount.mockResolvedValue([[mockSeller()], 1]);
+    usersRepo.query.mockResolvedValue([
+      { seller_id: 'seller-1', avg_score: '4.5', rating_count: 12 },
+    ]);
+
+    const out = await service.listFeaturedShops(50, 0);
+
+    expect(out).toMatchObject({ total: 1 });
+    expect(out.items[0]).toMatchObject({
+      id: 'seller-1',
+      phone: '+37411000000',
+      shop_name: 'AutoParts AM',
+      rating_avg: 4.5,
+      rating_count: 12,
+      is_featured: true,
+      created_at: '2026-01-01T00:00:00.000Z',
+    });
+  });
+});
