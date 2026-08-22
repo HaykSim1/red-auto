@@ -9,8 +9,10 @@ jest.mock('../push/push.service', () => ({
 import { HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import { AnalyticsQueryService } from '../analytics/analytics-query.service';
 import { ApiException } from '../common/exceptions/api.exception';
+import { AnalyticsMarketplaceDaily } from '../database/entities/analytics-marketplace-daily.entity';
 import { AppVersionConfig } from '../database/entities/app-version-config.entity';
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
@@ -729,6 +731,75 @@ describe('AdminService.listFeaturedShops', () => {
       rating_count: 12,
       is_featured: true,
       created_at: '2026-01-01T00:00:00.000Z',
+    });
+  });
+});
+
+describe('AnalyticsQueryService.getSellerPerformance', () => {
+  let service: AnalyticsQueryService;
+  let ds: { query: jest.Mock };
+
+  beforeEach(async () => {
+    ds = { query: jest.fn() };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AnalyticsQueryService,
+        {
+          provide: getRepositoryToken(AnalyticsMarketplaceDaily),
+          useValue: {},
+        },
+        { provide: getDataSourceToken(), useValue: ds },
+      ],
+    }).compile();
+    service = module.get(AnalyticsQueryService);
+  });
+
+  it('returns nulls rather than zeros for a seller with no offers', async () => {
+    ds.query.mockResolvedValue([
+      { offers_count: 0, wins: 0, avg_response_sec: null },
+    ]);
+
+    const out = await service.getSellerPerformance('seller-1');
+
+    expect(out).toEqual({
+      offers_count: 0,
+      wins: 0,
+      win_rate: null,
+      avg_response_sec: null,
+    });
+  });
+
+  it('computes win_rate from wins over offers', async () => {
+    ds.query.mockResolvedValue([
+      { offers_count: 10, wins: 3, avg_response_sec: 7200 },
+    ]);
+
+    const out = await service.getSellerPerformance('seller-1');
+
+    expect(out.win_rate).toBeCloseTo(0.3);
+    expect(out.avg_response_sec).toBe(7200);
+  });
+
+  it('scopes the query to the seller', async () => {
+    ds.query.mockResolvedValue([
+      { offers_count: 0, wins: 0, avg_response_sec: null },
+    ]);
+
+    await service.getSellerPerformance('seller-42');
+
+    expect(ds.query).toHaveBeenCalledWith(expect.any(String), ['seller-42']);
+  });
+
+  it('handles an empty result set as a seller with no activity', async () => {
+    ds.query.mockResolvedValue([]);
+
+    const out = await service.getSellerPerformance('seller-1');
+
+    expect(out).toEqual({
+      offers_count: 0,
+      wins: 0,
+      win_rate: null,
+      avg_response_sec: null,
     });
   });
 });

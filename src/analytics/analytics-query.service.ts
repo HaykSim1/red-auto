@@ -561,6 +561,51 @@ export class AnalyticsQueryService {
     };
   }
 
+  /**
+   * All-time performance for one seller. Deliberately lives beside getSellers:
+   * avg_response_sec must have exactly one definition, or the Analytics page and
+   * the shop detail page will silently disagree about the same shop.
+   */
+  async getSellerPerformance(sellerId: string): Promise<{
+    offers_count: number;
+    wins: number;
+    win_rate: number | null;
+    avg_response_sec: number | null;
+  }> {
+    const rows = await this.sql<{
+      offers_count: number;
+      wins: number;
+      avg_response_sec: number | null;
+    }>(
+      `
+      SELECT
+        COUNT(*)::int AS offers_count,
+        COUNT(*) FILTER (WHERE s.chosen_offer_id = o.id)::int AS wins,
+        AVG(EXTRACT(EPOCH FROM (o.created_at - pr.created_at)))::float AS avg_response_sec
+      FROM offers o
+      INNER JOIN part_requests pr ON pr.id = o.request_id
+      LEFT JOIN selections s ON s.request_id = pr.id
+      WHERE o.seller_id = $1
+      `,
+      [sellerId],
+    );
+
+    const row = rows[0] as
+      | { offers_count: number; wins: number; avg_response_sec: number | null }
+      | undefined;
+
+    const offersCount = row?.offers_count ?? 0;
+    const wins = row?.wins ?? 0;
+
+    return {
+      offers_count: offersCount,
+      wins,
+      // A seller with no offers has no win rate — not a win rate of zero.
+      win_rate: offersCount > 0 ? wins / offersCount : null,
+      avg_response_sec: row?.avg_response_sec ?? null,
+    };
+  }
+
   async getSeries(range: AnalyticsDateRange, metric: string) {
     const fromD = this.toDateStr(range.from);
     const toD = this.toDateStr(range.to);
