@@ -255,7 +255,11 @@ export class AdminController {
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ) {
-    return this.admin.listShopOffers(id, limit, offset);
+    return this.admin.listShopOffers(
+      id,
+      Math.min(Math.max(limit, 1), 100),
+      offset,
+    );
   }
 
   @Get('home-banners')
