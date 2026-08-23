@@ -915,6 +915,29 @@ describe('AdminService.getShopDetail', () => {
 
     expect(out.blocked_at).toBe('2026-02-03T04:05:06.000Z');
   });
+
+  it('parses the rating aggregate when one exists', async () => {
+    usersRepo.findOne.mockResolvedValue(mockShop());
+    usersRepo.query.mockResolvedValue([
+      { seller_id: 'shop-1', avg_score: '4.25', rating_count: 12 },
+    ]);
+
+    const out = await service.getShopDetail('shop-1');
+
+    expect(out.rating_avg).toBe(4.25);
+    expect(out.rating_count).toBe(12);
+  });
+
+  it('treats an empty avg_score as no rating rather than zero', async () => {
+    usersRepo.findOne.mockResolvedValue(mockShop());
+    usersRepo.query.mockResolvedValue([
+      { seller_id: 'shop-1', avg_score: '', rating_count: 0 },
+    ]);
+
+    const out = await service.getShopDetail('shop-1');
+
+    expect(out.rating_avg).toBeNull();
+  });
 });
 
 describe('AdminService.listShopOffers', () => {
@@ -982,5 +1005,16 @@ describe('AdminService.listShopOffers', () => {
     ).rejects.toMatchObject({
       status: HttpStatus.NOT_FOUND,
     });
+  });
+
+  it('throws a 404 when the id belongs to a buyer, not a seller', async () => {
+    usersRepo.findOne.mockResolvedValue({ id: 'shop-1', role: UserRole.USER });
+
+    await expect(service.listShopOffers('shop-1', 50, 0)).rejects.toMatchObject(
+      {
+        status: HttpStatus.NOT_FOUND,
+      },
+    );
+    expect(offersRepo.findAndCount).not.toHaveBeenCalled();
   });
 });
