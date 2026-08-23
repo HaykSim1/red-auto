@@ -29,9 +29,11 @@ import { RejectSellerApplicationDto } from '../seller-applications/dto/reject-se
 import {
   AdminFeaturedShopListDto,
   AdminHomeBannerListDto,
+  AdminModerationResultDto,
   AdminRequestDetailResponseDto,
   AdminRequestOffersResponseDto,
   AdminShopDetailResponseDto,
+  AdminShopRatingsResponseDto,
   AdminSpecialBuyerResponseDto,
   AuthOtpVerifyResponseDto,
   HomeBannerItemDto,
@@ -260,6 +262,31 @@ export class AdminController {
       Math.min(Math.max(limit, 1), 100),
       offset,
     );
+  }
+
+  @Get('shops/:id/ratings')
+  @ApiOperation({ summary: "List a shop's feedback, including hidden" })
+  @ApiOkResponse({ type: AdminShopRatingsResponseDto })
+  listShopRatings(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ) {
+    return this.admin.listShopRatings(
+      id,
+      Math.min(Math.max(limit, 1), 100),
+      offset,
+    );
+  }
+
+  @Patch('ratings/:id')
+  @ApiOperation({ summary: 'Moderate a feedback rating' })
+  @ApiOkResponse({ type: AdminModerationResultDto })
+  patchRating(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PatchModerationDto,
+  ) {
+    return this.admin.patchRatingModeration(id, dto);
   }
 
   @Get('home-banners')

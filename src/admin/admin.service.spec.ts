@@ -17,6 +17,7 @@ import { AppVersionConfig } from '../database/entities/app-version-config.entity
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
+import { SellerRating } from '../database/entities/seller-rating.entity';
 import { User } from '../database/entities/user.entity';
 import {
   PartRequestStatus,
@@ -24,6 +25,7 @@ import {
   UserRole,
 } from '../database/enums';
 import { PushService } from '../push/push.service';
+import { RatingsService } from '../ratings/ratings.service';
 import { AdminService, vehicleLabel } from './admin.service';
 
 describe('AdminService.listRequests', () => {
@@ -149,6 +151,14 @@ describe('AdminService.listRequests (wiring)', () => {
         {
           provide: getRepositoryToken(AppVersionConfig),
           useValue: {},
+        },
+        {
+          provide: getRepositoryToken(SellerRating),
+          useValue: {},
+        },
+        {
+          provide: RatingsService,
+          useValue: { refreshAggregate: jest.fn() },
         },
         {
           provide: PushService,
@@ -299,6 +309,14 @@ describe('AdminService.getRequestDetail', () => {
           useValue: {},
         },
         {
+          provide: getRepositoryToken(SellerRating),
+          useValue: {},
+        },
+        {
+          provide: RatingsService,
+          useValue: { refreshAggregate: jest.fn() },
+        },
+        {
           provide: PushService,
           useValue: { sendTestToUser: jest.fn() },
         },
@@ -447,6 +465,8 @@ describe('AdminService.listOffers', () => {
         },
         { provide: getRepositoryToken(SellerApplication), useValue: {} },
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: AnalyticsQueryService, useValue: {} },
@@ -518,6 +538,8 @@ describe('AdminService.listRequestOffers', () => {
         },
         { provide: getRepositoryToken(SellerApplication), useValue: {} },
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: AnalyticsQueryService, useValue: {} },
@@ -661,6 +683,8 @@ describe('AdminService.listFeaturedShops', () => {
         { provide: getRepositoryToken(Offer), useValue: {} },
         { provide: getRepositoryToken(SellerApplication), useValue: {} },
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: AnalyticsQueryService, useValue: {} },
@@ -861,6 +885,8 @@ describe('AdminService.getShopDetail', () => {
         { provide: getRepositoryToken(Offer), useValue: offersRepo },
         { provide: getRepositoryToken(SellerApplication), useValue: {} },
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: AnalyticsQueryService, useValue: perf },
@@ -966,6 +992,8 @@ describe('AdminService.listShopOffers', () => {
         { provide: getRepositoryToken(Offer), useValue: offersRepo },
         { provide: getRepositoryToken(SellerApplication), useValue: {} },
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
         { provide: AnalyticsQueryService, useValue: perf },
@@ -1016,5 +1044,152 @@ describe('AdminService.listShopOffers', () => {
       },
     );
     expect(offersRepo.findAndCount).not.toHaveBeenCalled();
+  });
+});
+
+describe('AdminService ratings moderation', () => {
+  let service: AdminService;
+  let usersRepo: { findOne: jest.Mock };
+  let ratingsRepo: {
+    findAndCount: jest.Mock;
+    findOne: jest.Mock;
+    save: jest.Mock;
+  };
+  let ratingsService: { refreshAggregate: jest.Mock };
+
+  beforeEach(async () => {
+    usersRepo = { findOne: jest.fn() };
+    ratingsRepo = {
+      findAndCount: jest.fn(),
+      findOne: jest.fn(),
+      save: jest.fn(),
+    };
+    ratingsService = {
+      refreshAggregate: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(User), useValue: usersRepo },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        { provide: getRepositoryToken(Offer), useValue: {} },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: ratingsRepo },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        {
+          provide: AnalyticsQueryService,
+          useValue: { getSellerPerformance: jest.fn() },
+        },
+        { provide: RatingsService, useValue: ratingsService },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it('returns hidden ratings alongside visible ones', async () => {
+    usersRepo.findOne.mockResolvedValue({
+      id: 'shop-1',
+      role: UserRole.SELLER,
+    });
+    ratingsRepo.findAndCount.mockResolvedValue([
+      [
+        {
+          id: 'r-visible',
+          score: 5,
+          comment: 'Great',
+          moderationState: ModerationState.VISIBLE,
+          createdAt: new Date('2026-03-02T00:00:00.000Z'),
+          rater: { id: 'u-1', displayName: 'Ani', phone: '+37411000001' },
+          request: { id: 'req-1' },
+        },
+        {
+          id: 'r-hidden',
+          score: 1,
+          comment: 'Abusive',
+          moderationState: ModerationState.HIDDEN,
+          createdAt: new Date('2026-03-01T00:00:00.000Z'),
+          rater: { id: 'u-2', displayName: null, phone: '+37411000002' },
+          request: null,
+        },
+      ],
+      2,
+    ]);
+
+    const out = await service.listShopRatings('shop-1', 50, 0);
+
+    // A hidden comment must stay findable, or it could never be unhidden.
+    expect(out.items.map((i) => i.id)).toEqual(['r-visible', 'r-hidden']);
+    expect(out.items[1].moderation_state).toBe(ModerationState.HIDDEN);
+    // The rating whose request was deleted must still render.
+    expect(out.items[1].request_id).toBeNull();
+    expect(out.items[1].rater.display_name).toBeNull();
+    expect(out.total).toBe(2);
+  });
+
+  it('scopes the ratings query to the shop, paginates and orders newest first', async () => {
+    usersRepo.findOne.mockResolvedValue({
+      id: 'shop-1',
+      role: UserRole.SELLER,
+    });
+    ratingsRepo.findAndCount.mockResolvedValue([[], 0]);
+
+    await service.listShopRatings('shop-1', 50, 0);
+
+    expect(ratingsRepo.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { seller: { id: 'shop-1' } },
+        take: 50,
+        skip: 0,
+        order: { createdAt: 'DESC' },
+      }),
+    );
+  });
+
+  it('throws a 404 when the rating does not exist', async () => {
+    ratingsRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.patchRatingModeration('missing', {
+        moderation_state: ModerationState.HIDDEN,
+      }),
+    ).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+  });
+
+  it('recomputes the seller aggregate after moderating a rating', async () => {
+    ratingsRepo.findOne.mockResolvedValue({
+      id: 'rating-1',
+      moderationState: ModerationState.VISIBLE,
+      seller: { id: 'seller-1' },
+    });
+    ratingsRepo.save.mockImplementation((r: unknown) => r);
+
+    await service.patchRatingModeration('rating-1', {
+      moderation_state: ModerationState.HIDDEN,
+    });
+
+    // This is the assertion that guards spec D2 end to end: hiding a rating
+    // must move the shop's public star rating, not just conceal the text.
+    expect(ratingsService.refreshAggregate).toHaveBeenCalledWith('seller-1');
+  });
+
+  it('persists the new moderation state before recomputing', async () => {
+    ratingsRepo.findOne.mockResolvedValue({
+      id: 'rating-1',
+      moderationState: ModerationState.VISIBLE,
+      seller: { id: 'seller-1' },
+    });
+    ratingsRepo.save.mockImplementation((r: unknown) => r);
+
+    await service.patchRatingModeration('rating-1', {
+      moderation_state: ModerationState.HIDDEN,
+    });
+
+    expect(ratingsRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ moderationState: ModerationState.HIDDEN }),
+    );
   });
 });

@@ -10,9 +10,11 @@ import { AppVersionConfig } from '../database/entities/app-version-config.entity
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
+import { SellerRating } from '../database/entities/seller-rating.entity';
 import { User } from '../database/entities/user.entity';
 import { SellerApplicationStatus, UserRole } from '../database/enums';
 import { PushService } from '../push/push.service';
+import { RatingsService } from '../ratings/ratings.service';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { UpdateAppVersionDto } from './dto/update-app-version.dto';
 
@@ -53,9 +55,12 @@ export class AdminService {
     private readonly sellerApplications: Repository<SellerApplication>,
     @InjectRepository(AppVersionConfig)
     private readonly appVersionConfigs: Repository<AppVersionConfig>,
+    @InjectRepository(SellerRating)
+    private readonly sellerRatings: Repository<SellerRating>,
     private readonly push: PushService,
     private readonly jwt: JwtService,
     private readonly analytics: AnalyticsQueryService,
+    private readonly ratingsService: RatingsService,
   ) {}
 
   async adminLogin(email: string, password: string) {
@@ -673,6 +678,63 @@ export class AdminService {
           .map((p) => ({ storage_key: p.storageKey, sort_order: p.sortOrder })),
       })),
     };
+  }
+
+  async listShopRatings(id: string, limit: number, offset: number) {
+    const shop = await this.users.findOne({ where: { id } });
+    if (!shop || shop.role !== UserRole.SELLER) {
+      throw new ApiException(
+        'not_found',
+        'Shop not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    // No moderation filter here on purpose: a hidden comment must stay
+    // listable, or it could never be found again to unhide.
+    const [rows, total] = await this.sellerRatings.findAndCount({
+      where: { seller: { id } },
+      relations: { rater: true, request: true },
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: offset,
+    });
+    return {
+      total,
+      items: rows.map((r) => ({
+        id: r.id,
+        score: r.score,
+        comment: r.comment,
+        moderation_state: r.moderationState,
+        created_at: r.createdAt.toISOString(),
+        rater: {
+          id: r.rater.id,
+          display_name: r.rater.displayName,
+          phone: r.rater.phone,
+        },
+        // `request` is nullable — a deleted request SETs NULL on this FK.
+        request_id: r.request?.id ?? null,
+      })),
+    };
+  }
+
+  async patchRatingModeration(id: string, dto: PatchModerationDto) {
+    const rating = await this.sellerRatings.findOne({
+      where: { id },
+      relations: { seller: true },
+    });
+    if (!rating) {
+      throw new ApiException(
+        'not_found',
+        'Rating not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    rating.moderationState = dto.moderation_state;
+    await this.sellerRatings.save(rating);
+    // Recompute after the save, not before, or the aggregate would be
+    // rebuilt from the stale (pre-moderation) row.
+    await this.ratingsService.refreshAggregate(rating.seller.id);
+    return { id: rating.id, moderation_state: rating.moderationState };
   }
 
   async getAppVersions(): Promise<AppVersionConfig[]> {

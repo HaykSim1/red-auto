@@ -836,3 +836,37 @@ export class AdminRequestOffersResponseDto {
   items: AdminRequestOfferRowDto[];
   @ApiProperty() total: number;
 }
+
+// ── Admin: Shop ratings moderation ──
+
+export class AdminShopRatingRaterDto {
+  @ApiProperty() id: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) display_name:
+    | string
+    | null;
+  @ApiProperty() phone: string;
+}
+
+export class AdminShopRatingRowDto {
+  @ApiProperty() id: string;
+  @ApiProperty() score: number;
+  @ApiPropertyOptional({ type: String, nullable: true }) comment: string | null;
+  @ApiProperty() moderation_state: string;
+  @ApiProperty() created_at: string;
+  @ApiProperty({ type: () => AdminShopRatingRaterDto })
+  rater: AdminShopRatingRaterDto;
+  @ApiPropertyOptional({ type: String, nullable: true }) request_id:
+    | string
+    | null;
+}
+
+export class AdminShopRatingsResponseDto {
+  @ApiProperty({ type: [AdminShopRatingRowDto] })
+  items: AdminShopRatingRowDto[];
+  @ApiProperty() total: number;
+}
+
+export class AdminModerationResultDto {
+  @ApiProperty() id: string;
+  @ApiProperty() moderation_state: string;
+}

@@ -6,8 +6,10 @@ import { AppVersionConfig } from '../database/entities/app-version-config.entity
 import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
+import { SellerRating } from '../database/entities/seller-rating.entity';
 import { User } from '../database/entities/user.entity';
 import { HomeModule } from '../home/home.module';
+import { RatingsModule } from '../ratings/ratings.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
@@ -19,10 +21,12 @@ import { AdminService } from './admin.service';
       Offer,
       SellerApplication,
       AppVersionConfig,
+      SellerRating,
     ]),
     AuthModule,
     HomeModule,
     AnalyticsModule,
+    RatingsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],
