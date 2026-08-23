@@ -419,6 +419,53 @@ export class AdminSpecialBuyerResponseDto {
   @ApiProperty() is_special_buyer: boolean;
 }
 
+// ── Admin: Shop detail ──
+
+export class AdminShopPerformanceDto {
+  @ApiProperty() offers_count: number;
+  @ApiProperty() wins: number;
+  @ApiPropertyOptional({ type: Number, nullable: true }) win_rate:
+    | number
+    | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) avg_response_sec:
+    | number
+    | null;
+}
+
+export class AdminShopDetailResponseDto {
+  @ApiProperty() id: string;
+  @ApiProperty() phone: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) display_name:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_name:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_address:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_logo_storage_key:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_phone:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_telegram:
+    | string
+    | null;
+  @ApiProperty() is_featured: boolean;
+  @ApiPropertyOptional({ type: String, nullable: true }) blocked_at:
+    | string
+    | null;
+  @ApiProperty() created_at: string;
+  @ApiPropertyOptional({ type: Number, nullable: true }) rating_avg:
+    | number
+    | null;
+  @ApiProperty() rating_count: number;
+  @ApiProperty({ type: () => AdminShopPerformanceDto })
+  performance: AdminShopPerformanceDto;
+}
+
 // ── Home banners ──
 
 export class HomeBannerItemDto {

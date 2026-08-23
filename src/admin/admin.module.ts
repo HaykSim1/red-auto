@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { AuthModule } from '../auth/auth.module';
 import { AppVersionConfig } from '../database/entities/app-version-config.entity';
 import { Offer } from '../database/entities/offer.entity';
@@ -21,6 +22,7 @@ import { AdminService } from './admin.service';
     ]),
     AuthModule,
     HomeModule,
+    AnalyticsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

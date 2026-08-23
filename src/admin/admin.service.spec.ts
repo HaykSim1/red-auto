@@ -18,7 +18,11 @@ import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerApplication } from '../database/entities/seller-application.entity';
 import { User } from '../database/entities/user.entity';
-import { PartRequestStatus, ModerationState } from '../database/enums';
+import {
+  PartRequestStatus,
+  ModerationState,
+  UserRole,
+} from '../database/enums';
 import { PushService } from '../push/push.service';
 import { AdminService, vehicleLabel } from './admin.service';
 
@@ -153,6 +157,10 @@ describe('AdminService.listRequests (wiring)', () => {
         {
           provide: JwtService,
           useValue: { signAsync: jest.fn() },
+        },
+        {
+          provide: AnalyticsQueryService,
+          useValue: {},
         },
       ],
     }).compile();
@@ -298,6 +306,10 @@ describe('AdminService.getRequestDetail', () => {
           provide: JwtService,
           useValue: { signAsync: jest.fn() },
         },
+        {
+          provide: AnalyticsQueryService,
+          useValue: {},
+        },
       ],
     }).compile();
 
@@ -437,6 +449,7 @@ describe('AdminService.listOffers', () => {
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: {} },
       ],
     }).compile();
 
@@ -507,6 +520,7 @@ describe('AdminService.listRequestOffers', () => {
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: {} },
       ],
     }).compile();
 
@@ -649,6 +663,7 @@ describe('AdminService.listFeaturedShops', () => {
         { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
         { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: {} },
       ],
     }).compile();
 
@@ -800,6 +815,172 @@ describe('AnalyticsQueryService.getSellerPerformance', () => {
       wins: 0,
       win_rate: null,
       avg_response_sec: null,
+    });
+  });
+});
+
+describe('AdminService.getShopDetail', () => {
+  let service: AdminService;
+  let usersRepo: { findOne: jest.Mock; query: jest.Mock };
+  let offersRepo: { findAndCount: jest.Mock };
+  let perf: { getSellerPerformance: jest.Mock };
+
+  const mockShop = (overrides: Record<string, unknown> = {}) => ({
+    id: 'shop-1',
+    phone: '+37411000000',
+    displayName: 'Ashot',
+    shopName: 'AutoParts AM',
+    shopAddress: 'Yerevan, Komitas 5',
+    shopLogoStorageKey: 'shops/logo-1.png',
+    sellerPhone: '+37499111222',
+    sellerTelegram: '@autoparts',
+    isFeatured: true,
+    blockedAt: null,
+    role: UserRole.SELLER,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    usersRepo = { findOne: jest.fn(), query: jest.fn().mockResolvedValue([]) };
+    offersRepo = { findAndCount: jest.fn() };
+    perf = {
+      getSellerPerformance: jest.fn().mockResolvedValue({
+        offers_count: 10,
+        wins: 3,
+        win_rate: 0.3,
+        avg_response_sec: 7200,
+      }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(User), useValue: usersRepo },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        { provide: getRepositoryToken(Offer), useValue: offersRepo },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: perf },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it('throws a 404 when the user does not exist', async () => {
+    usersRepo.findOne.mockResolvedValue(null);
+
+    await expect(service.getShopDetail('missing')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+    });
+  });
+
+  it('throws a 404 when the user exists but is not a seller', async () => {
+    usersRepo.findOne.mockResolvedValue(mockShop({ role: UserRole.USER }));
+
+    await expect(service.getShopDetail('shop-1')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+    });
+  });
+
+  it('returns profile fields plus the performance block', async () => {
+    usersRepo.findOne.mockResolvedValue(mockShop());
+
+    const out = await service.getShopDetail('shop-1');
+
+    expect(out).toMatchObject({
+      id: 'shop-1',
+      shop_name: 'AutoParts AM',
+      shop_logo_storage_key: 'shops/logo-1.png',
+      seller_telegram: '@autoparts',
+      blocked_at: null,
+      performance: {
+        offers_count: 10,
+        wins: 3,
+        win_rate: 0.3,
+        avg_response_sec: 7200,
+      },
+    });
+  });
+
+  it('emits blocked_at as an ISO string when the shop is blocked', async () => {
+    usersRepo.findOne.mockResolvedValue(
+      mockShop({ blockedAt: new Date('2026-02-03T04:05:06.000Z') }),
+    );
+
+    const out = await service.getShopDetail('shop-1');
+
+    expect(out.blocked_at).toBe('2026-02-03T04:05:06.000Z');
+  });
+});
+
+describe('AdminService.listShopOffers', () => {
+  let service: AdminService;
+  let usersRepo: { findOne: jest.Mock; query: jest.Mock };
+  let offersRepo: { findAndCount: jest.Mock };
+  let perf: { getSellerPerformance: jest.Mock };
+
+  beforeEach(async () => {
+    usersRepo = { findOne: jest.fn(), query: jest.fn().mockResolvedValue([]) };
+    offersRepo = { findAndCount: jest.fn() };
+    perf = {
+      getSellerPerformance: jest.fn().mockResolvedValue({
+        offers_count: 10,
+        wins: 3,
+        win_rate: 0.3,
+        avg_response_sec: 7200,
+      }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(User), useValue: usersRepo },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        { provide: getRepositoryToken(Offer), useValue: offersRepo },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: perf },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+  });
+
+  it('scopes the query to the shop, paginates and orders newest first', async () => {
+    usersRepo.findOne.mockResolvedValue({
+      id: 'shop-1',
+      role: UserRole.SELLER,
+    });
+    offersRepo.findAndCount.mockResolvedValue([[], 0]);
+
+    await service.listShopOffers('shop-1', 50, 0);
+
+    // The mocked repo ignores its argument, so asserting the CALL is the only
+    // way to catch a missing filter that would return every offer in the
+    // system.
+    expect(offersRepo.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { seller: { id: 'shop-1' } },
+        take: 50,
+        skip: 0,
+        order: { createdAt: 'DESC' },
+      }),
+    );
+  });
+
+  it('throws a 404 when the parent shop does not exist', async () => {
+    usersRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.listShopOffers('missing', 50, 0),
+    ).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
     });
   });
 });

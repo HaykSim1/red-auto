@@ -31,6 +31,7 @@ import {
   AdminHomeBannerListDto,
   AdminRequestDetailResponseDto,
   AdminRequestOffersResponseDto,
+  AdminShopDetailResponseDto,
   AdminSpecialBuyerResponseDto,
   AuthOtpVerifyResponseDto,
   HomeBannerItemDto,
@@ -237,6 +238,24 @@ export class AdminController {
   async unfeatureShop(@Param('id', ParseUUIDPipe) id: string) {
     await this.admin.unfeatureShop(id);
     return { ok: true };
+  }
+
+  @Get('shops/:id')
+  @ApiOperation({ summary: 'Get shop detail with all-time performance' })
+  @ApiOkResponse({ type: AdminShopDetailResponseDto })
+  getShopDetail(@Param('id', ParseUUIDPipe) id: string) {
+    return this.admin.getShopDetail(id);
+  }
+
+  @Get('shops/:id/offers')
+  @ApiOperation({ summary: "List a shop's offers" })
+  @ApiOkResponse({ type: AdminRequestOffersResponseDto })
+  listShopOffers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ) {
+    return this.admin.listShopOffers(id, limit, offset);
   }
 
   @Get('home-banners')

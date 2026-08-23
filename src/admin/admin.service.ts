@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository, Between } from 'typeorm';
+import { AnalyticsQueryService } from '../analytics/analytics-query.service';
 import { ApiException } from '../common/exceptions/api.exception';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { AppVersionConfig } from '../database/entities/app-version-config.entity';
@@ -54,6 +55,7 @@ export class AdminService {
     private readonly appVersionConfigs: Repository<AppVersionConfig>,
     private readonly push: PushService,
     private readonly jwt: JwtService,
+    private readonly analytics: AnalyticsQueryService,
   ) {}
 
   async adminLogin(email: string, password: string) {
@@ -592,6 +594,85 @@ export class AdminService {
     }
     u.isFeatured = false;
     await this.users.save(u);
+  }
+
+  async getShopDetail(id: string) {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u || u.role !== UserRole.SELLER) {
+      throw new ApiException(
+        'not_found',
+        'Shop not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const agg = (
+      await this.users.query<
+        { seller_id: string; avg_score: string | null; rating_count: number }[]
+      >(
+        `SELECT seller_id, avg_score, rating_count FROM seller_rating_aggregate WHERE seller_id = $1`,
+        [id],
+      )
+    )[0];
+
+    const performance = await this.analytics.getSellerPerformance(id);
+
+    return {
+      id: u.id,
+      phone: u.phone,
+      display_name: u.displayName ?? null,
+      shop_name: u.shopName ?? null,
+      shop_address: u.shopAddress ?? null,
+      shop_logo_storage_key: u.shopLogoStorageKey ?? null,
+      seller_phone: u.sellerPhone ?? null,
+      seller_telegram: u.sellerTelegram ?? null,
+      is_featured: u.isFeatured,
+      blocked_at: u.blockedAt ? u.blockedAt.toISOString() : null,
+      created_at: u.createdAt.toISOString(),
+      rating_avg:
+        agg?.avg_score != null && agg.avg_score !== ''
+          ? Number(agg.avg_score)
+          : null,
+      rating_count: agg?.rating_count ?? 0,
+      performance,
+    };
+  }
+
+  async listShopOffers(id: string, limit: number, offset: number) {
+    const shop = await this.users.findOne({ where: { id } });
+    if (!shop || shop.role !== UserRole.SELLER) {
+      throw new ApiException(
+        'not_found',
+        'Shop not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const [rows, total] = await this.offers.findAndCount({
+      where: { seller: { id } },
+      relations: { request: true, seller: true, photos: true },
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return {
+      total,
+      items: rows.map((o) => ({
+        id: o.id,
+        request_id: o.request.id,
+        seller_id: o.seller.id,
+        title: this.offerTitle(o),
+        request_summary:
+          previewText(o.request.description, 100) || '(No description)',
+        seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        moderation_state: o.moderationState,
+        price_amount: o.priceAmount,
+        variant_label: o.variantLabel,
+        created_at: o.createdAt.toISOString(),
+        photos: [...(o.photos ?? [])]
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((p) => ({ storage_key: p.storageKey, sort_order: p.sortOrder })),
+      })),
+    };
   }
 
   async getAppVersions(): Promise<AppVersionConfig[]> {
