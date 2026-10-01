@@ -775,7 +775,8 @@ export class OffersService {
       offer_id: offer.id,
     });
 
-    const agMap = await this.loadAggregates([offer.seller.id]);
+    // `offer` was loaded without the seller relation; the caller's id is the seller's id here.
+    const agMap = await this.loadAggregates([sellerId]);
     return this.serializeOffer(full!, sellerId, agMap, offer.request.id);
   }
 
