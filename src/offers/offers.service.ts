@@ -765,19 +765,15 @@ export class OffersService {
       }
     }
 
-    const full = await this.loadOfferWithPhotos(offer.id);
-    this.realtime.emit('offer.updated', {
-      request_id: offer.request.id,
-      offer_id: offer.id,
-    });
-    this.realtime.emitToRequestRoom(offer.request.id, 'offer.updated', {
-      request_id: offer.request.id,
-      offer_id: offer.id,
-    });
-
+    // Same fan-out as a new offer: realtime `offer.updated` + push to the buyer.
     // `offer` was loaded without the seller relation; the caller's id is the seller's id here.
-    const agMap = await this.loadAggregates([sellerId]);
-    return this.serializeOffer(full!, sellerId, agMap, offer.request.id);
+    return this.afterNewOfferSaved(
+      offer,
+      offer.request.id,
+      sellerId,
+      offer.request.author.id,
+      'updated',
+    );
   }
 
   async softDelete(
