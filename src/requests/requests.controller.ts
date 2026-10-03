@@ -17,18 +17,19 @@ import {
 } from '@nestjs/swagger';
 import {
   PaginatedRequestListDto,
+  PaginatedRequestPublicListDto,
   RequestAuthorDetailDto,
   RequestMineStatsResponseDto,
   RequestPublicDto,
 } from '../common/dto/responses.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { MineListScope, MineQueryDto } from './dto/mine-query.dto';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { AddRequestPhotosDto } from './dto/add-request-photos.dto';
 import { AcceptOfferDto } from './dto/accept-offer.dto';
 import { CancelAcceptedOfferDto } from './dto/cancel-accepted-offer.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
+import { OpenRequestsQueryDto } from './dto/open-requests-query.dto';
 import { PatchRequestDto } from './dto/patch-request.dto';
 import { OffersService } from '../offers/offers.service';
 import { RequestsService } from './requests.service';
@@ -69,11 +70,14 @@ export class RequestsController {
   @Get('open')
   @ApiOperation({
     summary:
-      'Open requests feed (excludes own). Seller or admin only; buyers receive 403.',
+      'Open requests feed (excludes own). Seller or admin only; buyers receive 403. Filters: brand (case-insensitive, multi), city (exact key, multi) — reset the cursor when filters change.',
   })
-  @ApiOkResponse({ type: PaginatedRequestListDto })
-  open(@CurrentUser() u: JwtUserPayload, @Query() q: PaginationQueryDto) {
-    return this.requests.listOpen(u.sub, u.role, q.limit, q.cursor);
+  @ApiOkResponse({ type: PaginatedRequestPublicListDto })
+  open(@CurrentUser() u: JwtUserPayload, @Query() q: OpenRequestsQueryDto) {
+    return this.requests.listOpen(u.sub, u.role, q.limit, q.cursor, {
+      brand: q.brand,
+      city: q.city,
+    });
   }
 
   @Post(':id/accept-offer')
@@ -138,7 +142,11 @@ export class RequestsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update / cancel own request' })
+  @ApiOperation({
+    summary:
+      'Author: cancel, or edit content (description, part_number, vin_text, city, quantity, photos) while open, visible and without an active deal',
+  })
+  @ApiOkResponse({ type: RequestAuthorDetailDto })
   patch(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() u: JwtUserPayload,

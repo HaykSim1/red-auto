@@ -20,6 +20,14 @@ import { AddRequestPhotosDto } from './dto/add-request-photos.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { PatchRequestDto } from './dto/patch-request.dto';
 
+export interface OpenFeedFilters {
+  brand?: string[];
+  city?: string[];
+}
+
+/** Push bodies show the start of the description, like the new-request broadcast. */
+const PUSH_BODY_MAX = 60;
+
 const DEFAULT_LIMIT = 20;
 
 function assertSellerFeedAccess(role: UserRole): void {
@@ -109,6 +117,7 @@ export class RequestsService {
     role: UserRole,
     limit = DEFAULT_LIMIT,
     cursor?: string,
+    filters: OpenFeedFilters = {},
   ): Promise<{
     items: ReturnType<RequestsService['serializePublic']>[];
     next_cursor: string | null;
@@ -129,6 +138,16 @@ export class RequestsService {
       .orderBy('r.createdAt', 'DESC')
       .addOrderBy('r.id', 'DESC')
       .take(take + 1);
+
+    // LOWER(NULL) IN (...) is NULL, so a brand filter drops requests without a vehicle.
+    if (filters.brand?.length) {
+      qb.andWhere('LOWER(vehicle.brand) IN (:...brands)', {
+        brands: filters.brand.map((b) => b.toLowerCase()),
+      });
+    }
+    if (filters.city?.length) {
+      qb.andWhere('r.city IN (:...cities)', { cities: filters.city });
+    }
 
     if (cursor) {
       const p = decodeCursor(cursor);
@@ -305,26 +324,103 @@ export class RequestsService {
       );
     }
 
-    if (r.status === PartRequestStatus.OPEN) {
-      if (dto.description !== undefined) r.description = dto.description.trim();
-      if (dto.vin_text !== undefined) r.vinText = dto.vin_text?.trim() ?? null;
-      if (dto.part_number !== undefined)
-        r.partNumber = dto.part_number?.trim() ?? null;
-    } else if (
+    const hasEdits =
       dto.description !== undefined ||
       dto.vin_text !== undefined ||
-      dto.part_number !== undefined
-    ) {
-      throw new ApiException(
-        'bad_request',
-        'Can only edit description fields while request is open.',
-        HttpStatus.BAD_REQUEST,
-      );
+      dto.part_number !== undefined ||
+      dto.city !== undefined ||
+      dto.quantity !== undefined ||
+      dto.photo_storage_keys !== undefined;
+
+    if (hasEdits) {
+      if (r.status !== PartRequestStatus.OPEN) {
+        throw new ApiException(
+          'request_not_open',
+          'Can only edit a request while it is open.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (r.activeAcceptanceOffer) {
+        throw new ApiException(
+          'request_deal_active',
+          'Cannot edit a request while an accepted offer is active.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      // No re-moderation flow exists: an edit must not slip past a hide decision.
+      if (r.moderationState !== ModerationState.VISIBLE) {
+        throw new ApiException(
+          'request_hidden',
+          'Request is hidden by moderation and cannot be edited.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (dto.description !== undefined) {
+        const d = dto.description.trim();
+        if (!d) {
+          throw new ApiException(
+            'bad_request',
+            'Description cannot be empty.',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        r.description = d;
+      }
+      if (dto.vin_text !== undefined) r.vinText = dto.vin_text?.trim() || null;
+      if (dto.part_number !== undefined)
+        r.partNumber = dto.part_number?.trim() || null;
+      if (dto.city !== undefined) r.city = dto.city?.trim() || null;
+      if (dto.quantity !== undefined) r.quantity = dto.quantity;
     }
 
-    await this.requests.save(r);
+    const keys = dto.photo_storage_keys;
+    // Save + photo replacement together: a failure mid-way must not leave the request photo-less.
+    await this.requests.manager.transaction(async (em) => {
+      await em.save(PartRequest, r);
+      if (keys !== undefined) {
+        await em.delete(RequestPhoto, { request: { id } });
+        if (keys.length) {
+          await em.save(
+            RequestPhoto,
+            keys.map((storageKey, i) =>
+              em.create(RequestPhoto, {
+                request: { id } as PartRequest,
+                storageKey,
+                sortOrder: i,
+              }),
+            ),
+          );
+        }
+      }
+    });
+
     const full = await this.loadWithPhotosAndVehicle(id);
+    if (hasEdits) await this.notifyRequestUpdated(full!, userId);
     return this.serializeAuthorDetail(full!, userId, false);
+  }
+
+  /** Realtime for anyone watching + push to sellers who already answered. Pure cancels do not call this. */
+  private async notifyRequestUpdated(
+    r: PartRequest,
+    authorId: string,
+  ): Promise<void> {
+    const payload = { request_id: r.id };
+    this.realtime.emit('request.updated', payload);
+    this.realtime.emitToRequestRoom(r.id, 'request.updated', payload);
+
+    const sellerIds = (
+      await this.offers.listVisibleOfferSellerIds(r.id)
+    ).filter((sid) => sid !== authorId);
+    if (sellerIds.length === 0) return;
+    const body =
+      r.description.length > PUSH_BODY_MAX
+        ? `${r.description.substring(0, PUSH_BODY_MAX)}…`
+        : r.description;
+    void this.push.sendToUserIds(sellerIds, {
+      title: 'Request updated',
+      body,
+      data: { type: 'request.updated', request_id: r.id },
+    });
   }
 
   async addPhotos(
@@ -416,6 +512,7 @@ export class RequestsService {
       status: r.status,
       region: r.region,
       created_at: r.createdAt.toISOString(),
+      updated_at: r.updatedAt.toISOString(),
       cover_storage_key: ph[0]?.storageKey ?? null,
       vehicle: r.vehicle ? this.serializeVehicle(r.vehicle) : null,
       photos: ph.map((p) => ({

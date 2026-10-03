@@ -910,6 +910,21 @@ export class OffersService {
   }
 
   /** Visible, non–mutually-cancelled offers per request (list meta for mine / feed). */
+  /** Distinct sellers with a live offer on the request — the audience for "request updated" pushes. */
+  async listVisibleOfferSellerIds(requestId: string): Promise<string[]> {
+    const rows = await this.offers
+      .createQueryBuilder('o')
+      .select('o.seller_id', 'seller_id')
+      .distinct(true)
+      .where('o.request_id = :rid', { rid: requestId })
+      .andWhere('o.moderation_state = :vis', { vis: ModerationState.VISIBLE })
+      .andWhere('o.interaction_state != :mc', {
+        mc: OfferInteractionState.MUTUALLY_CANCELLED,
+      })
+      .getRawMany<{ seller_id: string }>();
+    return [...new Set(rows.map((r) => r.seller_id))];
+  }
+
   async countVisibleOffersByRequestIds(
     requestIds: string[],
   ): Promise<Record<string, number>> {

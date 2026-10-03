@@ -310,6 +310,8 @@ export class RequestPublicDto {
   @ApiProperty() status: string;
   @ApiProperty() region: string;
   @ApiProperty() created_at: string;
+  @ApiProperty({ description: 'Bumped when the author edits the request' })
+  updated_at: string;
   @ApiPropertyOptional({ type: String, nullable: true }) cover_storage_key:
     | string
     | null;
@@ -330,6 +332,12 @@ export class RequestPublicDto {
       'Seller-only: true when the request author is marked as a special buyer in admin.',
   })
   buyer_is_special?: boolean;
+}
+
+/** Seller feed page — rows carry the public shape (photos, vin_text, part_number, quantity). */
+export class PaginatedRequestPublicListDto {
+  @ApiProperty({ type: [RequestPublicDto] }) items: RequestPublicDto[];
+  @ApiProperty({ type: String, nullable: true }) next_cursor: string | null;
 }
 
 export class RequestAuthorDetailDto extends RequestPublicDto {
