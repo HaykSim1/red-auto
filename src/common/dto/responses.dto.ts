@@ -397,6 +397,7 @@ export class AdminFeaturedShopRowDto {
     | null;
   @ApiProperty() rating_count: number;
   @ApiProperty() is_featured: boolean;
+  @ApiProperty() is_managed_shop: boolean;
   @ApiProperty() created_at: string;
   @ApiPropertyOptional({ type: String, nullable: true }) display_name:
     | string
@@ -416,6 +417,38 @@ export class AdminFeaturedShopRowDto {
   @ApiPropertyOptional({ type: String, nullable: true }) blocked_at:
     | string
     | null;
+}
+
+export class AdminManagedShopRowDto {
+  @ApiProperty() id: string;
+  @ApiProperty() phone: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_name:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_address:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_logo_storage_key:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_phone:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_telegram:
+    | string
+    | null;
+  @ApiProperty() is_featured: boolean;
+  @ApiProperty() is_managed_shop: boolean;
+  @ApiPropertyOptional({ type: String, nullable: true }) blocked_at:
+    | string
+    | null;
+  @ApiProperty() created_at: string;
+}
+
+export class AdminManagedShopListDto {
+  @ApiProperty({ type: [AdminManagedShopRowDto] })
+  items: AdminManagedShopRowDto[];
+  @ApiProperty() total: number;
 }
 
 export class AdminFeaturedShopListDto {
@@ -464,6 +497,7 @@ export class AdminShopDetailResponseDto {
     | string
     | null;
   @ApiProperty() is_featured: boolean;
+  @ApiProperty() is_managed_shop: boolean;
   @ApiPropertyOptional({ type: String, nullable: true }) blocked_at:
     | string
     | null;
@@ -831,6 +865,10 @@ export class AdminRequestOfferRowDto {
   @ApiProperty() title: string;
   @ApiProperty() request_summary: string;
   @ApiProperty() seller_label: string;
+  @ApiProperty({
+    description: 'True when staff created the offer for a managed shop',
+  })
+  created_by_operator: boolean;
   @ApiProperty() moderation_state: string;
   @ApiProperty() price_amount: string;
   @ApiPropertyOptional({ type: String, nullable: true }) variant_label:

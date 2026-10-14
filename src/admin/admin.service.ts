@@ -15,6 +15,8 @@ import { User } from '../database/entities/user.entity';
 import { SellerApplicationStatus, UserRole } from '../database/enums';
 import { PushService } from '../push/push.service';
 import { RatingsService } from '../ratings/ratings.service';
+import { CreateManagedShopDto } from './dto/create-managed-shop.dto';
+import { PatchManagedShopDto } from './dto/patch-managed-shop.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { UpdateAppVersionDto } from './dto/update-app-version.dto';
 
@@ -340,6 +342,7 @@ export class AdminService {
         request_summary:
           previewText(o.request.description, 100) || '(No description)',
         seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        created_by_operator: o.createdByUserId != null,
         moderation_state: o.moderationState,
         price_amount: o.priceAmount,
         variant_label: o.variantLabel,
@@ -374,6 +377,7 @@ export class AdminService {
         request_summary:
           previewText(o.request.description, 100) || '(No description)',
         seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        created_by_operator: o.createdByUserId != null,
         moderation_state: o.moderationState,
         price_amount: o.priceAmount,
         variant_label: o.variantLabel,
@@ -550,6 +554,7 @@ export class AdminService {
               : null,
           rating_count: agg?.rating_count ?? 0,
           is_featured: u.isFeatured,
+          is_managed_shop: u.isManagedShop,
           created_at: u.createdAt.toISOString(),
           // Shop profile fields for the admin Shops card grid. All live on the
           // User row already loaded above — no extra query, no join.
@@ -604,6 +609,92 @@ export class AdminService {
     await this.users.save(u);
   }
 
+  // ── Managed shops (staff-operated seller personas) ──
+
+  private serializeManagedShop(u: User) {
+    return {
+      id: u.id,
+      phone: u.phone,
+      shop_name: u.shopName ?? null,
+      shop_address: u.shopAddress ?? null,
+      shop_logo_storage_key: u.shopLogoStorageKey ?? null,
+      seller_phone: u.sellerPhone ?? null,
+      seller_telegram: u.sellerTelegram ?? null,
+      is_featured: u.isFeatured,
+      is_managed_shop: true as const,
+      blocked_at: u.blockedAt ? u.blockedAt.toISOString() : null,
+      created_at: u.createdAt.toISOString(),
+    };
+  }
+
+  private async assertPhoneFree(phone: string, exceptUserId?: string) {
+    const existing = await this.users.findOne({ where: { phone } });
+    if (existing && existing.id !== exceptUserId) {
+      throw new ApiException(
+        'phone_taken',
+        'A user with this phone already exists.',
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
+
+  async listManagedShops(limit: number, offset: number) {
+    const [rows, total] = await this.users.findAndCount({
+      where: { isManagedShop: true },
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return { total, items: rows.map((u) => this.serializeManagedShop(u)) };
+  }
+
+  async createManagedShop(dto: CreateManagedShopDto) {
+    const phone = dto.phone.trim();
+    await this.assertPhoneFree(phone);
+    const saved = await this.users.save(
+      this.users.create({
+        phone,
+        role: UserRole.SELLER,
+        isManagedShop: true,
+        displayName: dto.shop_name.trim(),
+        shopName: dto.shop_name.trim(),
+        shopAddress: dto.shop_address.trim(),
+        sellerPhone: phone,
+        sellerTelegram: dto.seller_telegram?.trim() || null,
+        shopLogoStorageKey: dto.logo_storage_key?.trim() || null,
+      }),
+    );
+    return this.serializeManagedShop(saved);
+  }
+
+  async patchManagedShop(id: string, dto: PatchManagedShopDto) {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u || u.role !== UserRole.SELLER || !u.isManagedShop) {
+      throw new ApiException(
+        'managed_shop_not_found',
+        'Managed shop not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (dto.phone !== undefined) {
+      const phone = dto.phone.trim();
+      if (phone !== u.phone) await this.assertPhoneFree(phone, u.id);
+      u.phone = phone;
+      u.sellerPhone = phone;
+    }
+    if (dto.shop_name !== undefined) {
+      u.shopName = dto.shop_name.trim();
+      u.displayName = dto.shop_name.trim();
+    }
+    if (dto.shop_address !== undefined) u.shopAddress = dto.shop_address.trim();
+    if (dto.seller_telegram !== undefined)
+      u.sellerTelegram = dto.seller_telegram?.trim() || null;
+    if (dto.logo_storage_key !== undefined)
+      u.shopLogoStorageKey = dto.logo_storage_key?.trim() || null;
+    const saved = await this.users.save(u);
+    return this.serializeManagedShop(saved);
+  }
+
   async getShopDetail(id: string) {
     const u = await this.users.findOne({ where: { id } });
     if (!u || u.role !== UserRole.SELLER) {
@@ -635,6 +726,7 @@ export class AdminService {
       seller_phone: u.sellerPhone ?? null,
       seller_telegram: u.sellerTelegram ?? null,
       is_featured: u.isFeatured,
+      is_managed_shop: u.isManagedShop,
       blocked_at: u.blockedAt ? u.blockedAt.toISOString() : null,
       created_at: u.createdAt.toISOString(),
       rating_avg:
@@ -672,6 +764,7 @@ export class AdminService {
         request_summary:
           previewText(o.request.description, 100) || '(No description)',
         seller_label: o.seller.displayName?.trim() || o.seller.phone,
+        created_by_operator: o.createdByUserId != null,
         moderation_state: o.moderationState,
         price_amount: o.priceAmount,
         variant_label: o.variantLabel,

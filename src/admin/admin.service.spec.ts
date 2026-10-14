@@ -1258,3 +1258,184 @@ describe('AdminService.adminLogin', () => {
     });
   });
 });
+
+describe('AdminService managed shops', () => {
+  let service: AdminService;
+  let usersRepo: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    findAndCount: jest.Mock;
+  };
+  let offersRepo: { findAndCount: jest.Mock };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn((v: Partial<User>) => v),
+            save: jest.fn((v: Partial<User>) =>
+              Promise.resolve({ id: 'persona-1', createdAt: new Date(), ...v }),
+            ),
+            findAndCount: jest.fn(),
+          },
+        },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        {
+          provide: getRepositoryToken(Offer),
+          useValue: { findAndCount: jest.fn() },
+        },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    usersRepo = module.get(getRepositoryToken(User));
+    offersRepo = module.get(getRepositoryToken(Offer));
+  });
+
+  const createDto = {
+    phone: '+37491000777',
+    shop_name: 'Garage One',
+    shop_address: 'Yerevan, Komitas 1',
+  };
+
+  describe('createManagedShop', () => {
+    it('throws 409 phone_taken when a user with that phone exists', async () => {
+      usersRepo.findOne.mockResolvedValue({ id: 'someone' });
+
+      await expect(service.createManagedShop(createDto)).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        code: 'phone_taken',
+      });
+      expect(usersRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('creates a managed seller persona with the shop phone as contact', async () => {
+      usersRepo.findOne.mockResolvedValue(null);
+
+      const res = await service.createManagedShop(createDto);
+
+      expect(usersRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: '+37491000777',
+          role: UserRole.SELLER,
+          isManagedShop: true,
+          shopName: 'Garage One',
+          shopAddress: 'Yerevan, Komitas 1',
+          sellerPhone: '+37491000777',
+          displayName: 'Garage One',
+        }),
+      );
+      expect(res).toMatchObject({ id: 'persona-1', is_managed_shop: true });
+    });
+  });
+
+  describe('patchManagedShop', () => {
+    it('throws 404 for a seller that is not a managed shop', async () => {
+      usersRepo.findOne.mockResolvedValue({
+        id: 'real',
+        role: UserRole.SELLER,
+        isManagedShop: false,
+      });
+
+      await expect(
+        service.patchManagedShop('real', { shop_name: 'X' }),
+      ).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: 'managed_shop_not_found',
+      });
+    });
+
+    it('updates shop fields and keeps seller_phone in sync with phone', async () => {
+      usersRepo.findOne
+        .mockResolvedValueOnce({
+          id: 'persona-1',
+          phone: '+37491000777',
+          role: UserRole.SELLER,
+          isManagedShop: true,
+          createdAt: new Date(),
+        })
+        .mockResolvedValueOnce(null); // new phone is free
+
+      await service.patchManagedShop('persona-1', {
+        phone: '+37491000778',
+        shop_address: 'New address',
+      });
+
+      expect(usersRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: '+37491000778',
+          sellerPhone: '+37491000778',
+          shopAddress: 'New address',
+        }),
+      );
+    });
+  });
+
+  describe('listManagedShops', () => {
+    it('lists only managed shops', async () => {
+      usersRepo.findAndCount.mockResolvedValue([
+        [
+          {
+            id: 'persona-1',
+            phone: '+37491000777',
+            shopName: 'Garage One',
+            isManagedShop: true,
+            createdAt: new Date(),
+          },
+        ],
+        1,
+      ]);
+
+      const res = await service.listManagedShops(50, 0);
+
+      const args = usersRepo.findAndCount.mock.calls[0] as [
+        { where: { isManagedShop: boolean } },
+      ];
+      expect(args[0].where.isManagedShop).toBe(true);
+      expect(res.total).toBe(1);
+      expect(res.items[0]).toMatchObject({
+        id: 'persona-1',
+        shop_name: 'Garage One',
+      });
+    });
+  });
+
+  describe('listOffers created_by_operator marker', () => {
+    it('flags offers that were created by staff', async () => {
+      const base = {
+        request: { id: 'req-1', description: 'Pads' },
+        seller: { id: 's', displayName: 'Shop', phone: '+374' },
+        moderationState: ModerationState.VISIBLE,
+        priceAmount: '1.00',
+        variantLabel: null,
+        createdAt: new Date(),
+      };
+      offersRepo.findAndCount.mockResolvedValue([
+        [
+          { ...base, id: 'o-staff', createdByUserId: 'op-1' },
+          { ...base, id: 'o-real', createdByUserId: null },
+        ],
+        2,
+      ]);
+
+      const res = await service.listOffers(50, 0);
+
+      expect(res.items.map((o) => o.created_by_operator)).toEqual([
+        true,
+        false,
+      ]);
+    });
+  });
+});

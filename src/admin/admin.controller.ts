@@ -28,6 +28,8 @@ import { SellerApplicationStatus, UserRole } from '../database/enums';
 import { RejectSellerApplicationDto } from '../seller-applications/dto/reject-seller-application.dto';
 import {
   AdminFeaturedShopListDto,
+  AdminManagedShopListDto,
+  AdminManagedShopRowDto,
   AdminHomeBannerListDto,
   AdminModerationResultDto,
   AdminRequestDetailResponseDto,
@@ -42,6 +44,8 @@ import { HomeBannersService } from '../home/home-banners.service';
 import { AdminService } from './admin.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateHomeBannerDto } from './dto/create-home-banner.dto';
+import { CreateManagedShopDto } from './dto/create-managed-shop.dto';
+import { PatchManagedShopDto } from './dto/patch-managed-shop.dto';
 import { PatchHomeBannerDto } from './dto/patch-home-banner.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { SetSpecialBuyerDto } from './dto/set-special-buyer.dto';
@@ -240,6 +244,41 @@ export class AdminController {
   async unfeatureShop(@Param('id', ParseUUIDPipe) id: string) {
     await this.admin.unfeatureShop(id);
     return { ok: true };
+  }
+
+  @Get('managed-shops')
+  @ApiOperation({
+    summary: 'List managed shops (staff-operated seller personas)',
+  })
+  @ApiOkResponse({ type: AdminManagedShopListDto })
+  listManagedShops(
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ) {
+    return this.admin.listManagedShops(
+      Math.min(Math.max(limit, 1), 100),
+      offset,
+    );
+  }
+
+  @Post('managed-shops')
+  @ApiOperation({
+    summary:
+      'Create a managed shop: a seller persona operated by staff via /v1/operator (no OTP login)',
+  })
+  @ApiCreatedResponse({ type: AdminManagedShopRowDto })
+  createManagedShop(@Body() dto: CreateManagedShopDto) {
+    return this.admin.createManagedShop(dto);
+  }
+
+  @Patch('managed-shops/:id')
+  @ApiOperation({ summary: 'Update a managed shop profile' })
+  @ApiOkResponse({ type: AdminManagedShopRowDto })
+  patchManagedShop(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PatchManagedShopDto,
+  ) {
+    return this.admin.patchManagedShop(id, dto);
   }
 
   @Get('shops/:id')
