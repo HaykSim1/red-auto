@@ -251,6 +251,25 @@ describe('OperatorService', () => {
       ]);
       expect(res.items[1].answered_by_shop_ids).toEqual([]);
     });
+
+    it('lists each shop once even when it has several offers on the request', async () => {
+      requestsService.listOpen.mockResolvedValue({
+        items: [{ id: 'req-1' }],
+        next_cursor: null,
+      });
+      offersRepo.createQueryBuilder.mockReturnValue(
+        qb({
+          getRawMany: jest.fn().mockResolvedValue([
+            { request_id: 'req-1', seller_id: 'persona-1' },
+            { request_id: 'req-1', seller_id: 'persona-1' },
+          ]),
+        }),
+      );
+
+      const res = await service.listRequests('op-1', { limit: 20 });
+
+      expect(res.items[0].answered_by_shop_ids).toEqual(['persona-1']);
+    });
   });
 
   describe('getRequest', () => {

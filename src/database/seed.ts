@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import dataSource from './data-source';
 import { User } from './entities/user.entity';
 import { UserRole } from './enums';
+import { operatorSeedSpec } from './seed-operator';
 
 const BCRYPT_ROUNDS = 10;
 
@@ -61,10 +62,12 @@ async function upsertUser(
 async function seed(): Promise<void> {
   const seedAll = process.env.SEED === 'true';
   const seedAdminOnly = process.env.SEED_ADMIN === 'true';
+  // Validates env up front so a misconfigured operator seed fails before touching the DB.
+  const operatorSpec = operatorSeedSpec(process.env);
 
   if (
     process.env.NODE_ENV === 'production' &&
-    (seedAll || seedAdminOnly) &&
+    (seedAll || seedAdminOnly || operatorSpec) &&
     process.env.ALLOW_DANGEROUS_SEED !== 'true'
   ) {
     console.error(
@@ -73,9 +76,9 @@ async function seed(): Promise<void> {
     process.exit(1);
   }
 
-  if (!seedAll && !seedAdminOnly) {
+  if (!seedAll && !seedAdminOnly && !operatorSpec) {
     console.log(
-      'Skip seed (set SEED=true for client + admin, or SEED_ADMIN=true for admin only).',
+      'Skip seed (set SEED=true for client + admin, SEED_ADMIN=true for admin only, or SEED_OPERATOR=true for an operator only).',
     );
     return;
   }
@@ -104,32 +107,31 @@ async function seed(): Promise<void> {
     );
   }
 
-  await upsertUser(
-    users,
-    {
-      phone: adminPhone,
-      role: UserRole.ADMIN,
-      displayName: 'Dev admin',
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      sellerPhone: null,
-      sellerTelegram: null,
-    },
-    'admin',
-  );
-
-  const operatorEmail = process.env.SEED_OPERATOR_EMAIL;
-  if (operatorEmail) {
-    const operatorPassword =
-      process.env.SEED_OPERATOR_PASSWORD ?? 'changeme123';
+  if (seedAll || seedAdminOnly) {
     await upsertUser(
       users,
       {
-        phone: process.env.SEED_OPERATOR_PHONE ?? '+37400000002',
+        phone: adminPhone,
+        role: UserRole.ADMIN,
+        displayName: 'Dev admin',
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        sellerPhone: null,
+        sellerTelegram: null,
+      },
+      'admin',
+    );
+  }
+
+  if (operatorSpec) {
+    await upsertUser(
+      users,
+      {
+        phone: operatorSpec.phone,
         role: UserRole.OPERATOR,
-        displayName: 'Dev operator',
-        email: operatorEmail,
-        passwordHash: await bcrypt.hash(operatorPassword, BCRYPT_ROUNDS),
+        displayName: 'Operator',
+        email: operatorSpec.email,
+        passwordHash: await bcrypt.hash(operatorSpec.password, BCRYPT_ROUNDS),
         sellerPhone: null,
         sellerTelegram: null,
       },

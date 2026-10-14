@@ -30,6 +30,16 @@ export class RatingsService {
       );
     }
 
+    // Staff operating managed shops must not rate sellers (their own personas or competitors).
+    const rater = await this.users.findOne({ where: { id: raterId } });
+    if (rater?.role === UserRole.OPERATOR) {
+      throw new ApiException(
+        'forbidden',
+        'Staff accounts cannot rate sellers.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const seller = await this.users.findOne({ where: { id: dto.seller_id } });
     if (!seller || seller.role !== UserRole.SELLER) {
       throw new ApiException(

@@ -20,6 +20,12 @@ import { PatchManagedShopDto } from './dto/patch-managed-shop.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { UpdateAppVersionDto } from './dto/update-app-version.dto';
 
+/**
+ * Staff (admin / operator) access tokens live longer than the 15-minute user
+ * token because the panel has no refresh token: an operator works in it all day.
+ */
+export const STAFF_TOKEN_TTL = '12h';
+
 function previewText(text: string | null | undefined, max: number): string {
   const t = (text ?? '').trim();
   if (!t) return '';
@@ -103,11 +109,14 @@ export class AdminService {
       phone_verified: true,
     };
 
-    const access_token = await this.jwt.signAsync({
-      sub: payload.sub,
-      role: payload.role,
-      phone_verified: payload.phone_verified,
-    });
+    const access_token = await this.jwt.signAsync(
+      {
+        sub: payload.sub,
+        role: payload.role,
+        phone_verified: payload.phone_verified,
+      },
+      { expiresIn: STAFF_TOKEN_TTL },
+    );
 
     return {
       access_token,

@@ -142,9 +142,11 @@ export class OperatorService {
       })
       .andWhere('s.is_managed_shop = true')
       .getRawMany<{ request_id: string; seller_id: string }>();
+    // A shop may have several offers on one request (D-019): count it once.
     const out: Record<string, string[]> = {};
     for (const r of rows) {
-      (out[r.request_id] ??= []).push(r.seller_id);
+      const list = (out[r.request_id] ??= []);
+      if (!list.includes(r.seller_id)) list.push(r.seller_id);
     }
     return out;
   }

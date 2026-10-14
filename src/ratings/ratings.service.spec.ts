@@ -3,7 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { SellerRating } from '../database/entities/seller-rating.entity';
 import { SellerRatingAggregate } from '../database/entities/seller-rating-aggregate.entity';
 import { User } from '../database/entities/user.entity';
-import { ModerationState } from '../database/enums';
+import { HttpStatus } from '@nestjs/common';
+import { ModerationState, UserRole } from '../database/enums';
 import { RatingsService } from './ratings.service';
 
 describe('RatingsService.refreshAggregate', () => {
@@ -88,5 +89,41 @@ describe('RatingsService.refreshAggregate', () => {
     expect(aggregatesRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ avgScore: '0.000', ratingCount: 0 }),
     );
+  });
+});
+
+describe('RatingsService.create — staff cannot rate', () => {
+  it('rejects an operator rater with 403 forbidden before touching ratings', async () => {
+    const usersRepo = {
+      findOne: jest.fn(({ where }: { where: { id: string } }) =>
+        Promise.resolve(
+          where.id === 'op-1'
+            ? { id: 'op-1', role: UserRole.OPERATOR }
+            : { id: 'persona-1', role: UserRole.SELLER },
+        ),
+      ),
+    };
+    const ratingsRepo = {
+      findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        RatingsService,
+        { provide: getRepositoryToken(SellerRating), useValue: ratingsRepo },
+        { provide: getRepositoryToken(SellerRatingAggregate), useValue: {} },
+        { provide: getRepositoryToken(User), useValue: usersRepo },
+      ],
+    }).compile();
+    const service = module.get(RatingsService);
+
+    await expect(
+      service.create('op-1', { seller_id: 'persona-1', score: 5 }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.FORBIDDEN,
+      code: 'forbidden',
+    });
+    expect(ratingsRepo.save).not.toHaveBeenCalled();
   });
 });

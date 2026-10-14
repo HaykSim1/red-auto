@@ -78,7 +78,8 @@ export const envSchema = z
       .default('admin@red-auto.local'),
     /** Admin password for seed (plain-text; bcrypt-hashed before storing). */
     SEED_ADMIN_PASSWORD: z.string().min(8).optional().default('changeme123'),
-    /** Optional operator (staff) account for seed — created only when the email is set. */
+    /** Operator (staff) seed: SEED_OPERATOR=true upserts only the operator; password is mandatory. */
+    SEED_OPERATOR: boolFromEnv,
     SEED_OPERATOR_EMAIL: z.string().email().optional(),
     SEED_OPERATOR_PASSWORD: z.string().min(8).optional(),
     SEED_OPERATOR_PHONE: z.string().optional().default('+37400000002'),

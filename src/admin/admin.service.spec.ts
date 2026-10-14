@@ -26,7 +26,7 @@ import {
 } from '../database/enums';
 import { PushService } from '../push/push.service';
 import { RatingsService } from '../ratings/ratings.service';
-import { AdminService, vehicleLabel } from './admin.service';
+import { AdminService, STAFF_TOKEN_TTL, vehicleLabel } from './admin.service';
 
 describe('AdminService.listRequests', () => {
   it('derives vehicle_label from label when present', () => {
@@ -1244,7 +1244,19 @@ describe('AdminService.adminLogin', () => {
     expect(res.user.role).toBe(UserRole.OPERATOR);
     expect(jwt.signAsync).toHaveBeenCalledWith(
       expect.objectContaining({ sub: 'u-operator', role: UserRole.OPERATOR }),
+      { expiresIn: STAFF_TOKEN_TTL },
     );
+  });
+
+  it('issues staff tokens with the long staff lifetime (no refresh token exists)', async () => {
+    usersRepo.findOne.mockResolvedValue(await staffUser(UserRole.ADMIN));
+
+    await service.adminLogin('staff@red-auto.local', 'secret123');
+
+    expect(STAFF_TOKEN_TTL).toBe('12h');
+    expect(jwt.signAsync).toHaveBeenCalledWith(expect.anything(), {
+      expiresIn: '12h',
+    });
   });
 
   it('rejects a seller account with invalid_credentials', async () => {
