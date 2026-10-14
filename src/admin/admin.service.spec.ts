@@ -1193,3 +1193,68 @@ describe('AdminService ratings moderation', () => {
     );
   });
 });
+
+describe('AdminService.adminLogin', () => {
+  let service: AdminService;
+  let usersRepo: { findOne: jest.Mock };
+  let jwt: { signAsync: jest.Mock };
+  const bcrypt = jest.requireActual<typeof import('bcrypt')>('bcrypt');
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        { provide: getRepositoryToken(Offer), useValue: {} },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: { refreshAggregate: jest.fn() } },
+        { provide: PushService, useValue: { sendTestToUser: jest.fn() } },
+        {
+          provide: JwtService,
+          useValue: { signAsync: jest.fn().mockResolvedValue('jwt-token') },
+        },
+        { provide: AnalyticsQueryService, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    usersRepo = module.get(getRepositoryToken(User));
+    jwt = module.get(JwtService);
+  });
+
+  const staffUser = async (role: UserRole) => ({
+    id: `u-${role}`,
+    phone: '+37400000009',
+    role,
+    email: 'staff@red-auto.local',
+    passwordHash: await bcrypt.hash('secret123', 4),
+    blockedAt: null,
+    displayName: 'Staff',
+    preferredLocale: 'hy',
+  });
+
+  it('issues a token with role operator for an operator account', async () => {
+    usersRepo.findOne.mockResolvedValue(await staffUser(UserRole.OPERATOR));
+
+    const res = await service.adminLogin('staff@red-auto.local', 'secret123');
+
+    expect(res.user.role).toBe(UserRole.OPERATOR);
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: 'u-operator', role: UserRole.OPERATOR }),
+    );
+  });
+
+  it('rejects a seller account with invalid_credentials', async () => {
+    usersRepo.findOne.mockResolvedValue(await staffUser(UserRole.SELLER));
+
+    await expect(
+      service.adminLogin('staff@red-auto.local', 'secret123'),
+    ).rejects.toMatchObject({
+      status: HttpStatus.UNAUTHORIZED,
+      code: 'invalid_credentials',
+    });
+  });
+});

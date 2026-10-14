@@ -52,7 +52,8 @@ export class SellerApplicationMeDto {
 export class AuthOtpVerifyUserDto {
   @ApiProperty() id: string;
   @ApiProperty() phone: string;
-  @ApiProperty({ enum: ['user', 'seller', 'admin'] }) role: string;
+  @ApiProperty({ enum: ['user', 'seller', 'admin', 'operator'] })
+  role: string;
   @ApiPropertyOptional({ type: String, nullable: true }) display_name:
     | string
     | null;
@@ -79,7 +80,8 @@ export class AuthRefreshResponseDto {
 export class MeResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() phone: string;
-  @ApiProperty({ enum: ['user', 'seller', 'admin'] }) role: string;
+  @ApiProperty({ enum: ['user', 'seller', 'admin', 'operator'] })
+  role: string;
   @ApiPropertyOptional({ type: String, nullable: true }) display_name:
     | string
     | null;

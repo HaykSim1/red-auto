@@ -2,6 +2,7 @@ export enum UserRole {
   USER = 'user',
   SELLER = 'seller',
   ADMIN = 'admin',
+  OPERATOR = 'operator',
 }
 
 export enum PreferredLocale {

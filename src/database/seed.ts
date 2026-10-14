@@ -118,6 +118,25 @@ async function seed(): Promise<void> {
     'admin',
   );
 
+  const operatorEmail = process.env.SEED_OPERATOR_EMAIL;
+  if (operatorEmail) {
+    const operatorPassword =
+      process.env.SEED_OPERATOR_PASSWORD ?? 'changeme123';
+    await upsertUser(
+      users,
+      {
+        phone: process.env.SEED_OPERATOR_PHONE ?? '+37400000002',
+        role: UserRole.OPERATOR,
+        displayName: 'Dev operator',
+        email: operatorEmail,
+        passwordHash: await bcrypt.hash(operatorPassword, BCRYPT_ROUNDS),
+        sellerPhone: null,
+        sellerTelegram: null,
+      },
+      'operator',
+    );
+  }
+
   const testPhone = process.env.TEST_PHONE;
   if (testPhone) {
     await upsertUser(

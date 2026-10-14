@@ -78,6 +78,10 @@ export const envSchema = z
       .default('admin@red-auto.local'),
     /** Admin password for seed (plain-text; bcrypt-hashed before storing). */
     SEED_ADMIN_PASSWORD: z.string().min(8).optional().default('changeme123'),
+    /** Optional operator (staff) account for seed — created only when the email is set. */
+    SEED_OPERATOR_EMAIL: z.string().email().optional(),
+    SEED_OPERATOR_PASSWORD: z.string().min(8).optional(),
+    SEED_OPERATOR_PHONE: z.string().optional().default('+37400000002'),
     /**
      * If true, allow SMS_PROVIDER=dev (console log OTP only) when NODE_ENV=production.
      * For staging / demos only — never enable on a public production API with real users.

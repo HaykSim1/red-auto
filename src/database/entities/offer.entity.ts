@@ -31,6 +31,14 @@ export class Offer {
   @JoinColumn({ name: 'seller_id' })
   seller: User;
 
+  /** Audit: staff user who actually created the offer (operator acting for a managed shop). */
+  @Column({ type: 'uuid', name: 'created_by_user_id', nullable: true })
+  createdByUserId: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by_user_id' })
+  createdBy: User | null;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, name: 'price_amount' })
   priceAmount: string;
 

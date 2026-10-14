@@ -35,6 +35,15 @@ function assertSellerOrAdminForHistory(role: UserRole): void {
   }
 }
 
+export interface SellerDealFlags {
+  buyer_cancel_pending_ack: boolean;
+  deal_active: boolean;
+  buyer_marked_complete: boolean;
+  seller_marked_complete: boolean;
+  buyer_marked_cancel: boolean;
+  seller_marked_cancel: boolean;
+}
+
 function normalizeVariantLabel(v?: string | null): string | null {
   if (v == null) return null;
   const t = v.trim();
@@ -455,6 +464,7 @@ export class OffersService {
     sellerId: string,
     role: UserRole,
     dto: CreateOfferDto,
+    createdByUserId?: string,
   ): Promise<ReturnType<OffersService['serializeOffer']>> {
     this.assertSellerRole(role);
     const req = await this.requests.findOne({
@@ -494,6 +504,7 @@ export class OffersService {
         existingForSeller[0],
         dto,
         sellerId,
+        createdByUserId,
       );
     }
 
@@ -518,6 +529,7 @@ export class OffersService {
       variantLabel: normalizeVariantLabel(dto.variant_label),
       moderationState: ModerationState.VISIBLE,
       interactionState: OfferInteractionState.NONE,
+      createdByUserId: createdByUserId ?? null,
     });
 
     const saved = await this.offers.save(offer);
@@ -547,6 +559,7 @@ export class OffersService {
     existing: Offer,
     dto: CreateOfferDto,
     sellerId: string,
+    createdByUserId?: string,
   ): Promise<ReturnType<OffersService['serializeOffer']>> {
     const req = existing.request;
     await this.assertOfferVisibleToSeller(req);
@@ -580,6 +593,7 @@ export class OffersService {
     existing.buyerDealCancelAt = null;
     existing.sellerDealCancelReason = null;
     existing.sellerDealCancelAt = null;
+    existing.createdByUserId = createdByUserId ?? existing.createdByUserId;
 
     const saved = await this.offers.save(existing);
 
@@ -861,16 +875,7 @@ export class OffersService {
     requestId: string,
     sellerId: string,
   ): Promise<
-    Array<
-      ReturnType<OffersService['serializeOffer']> & {
-        buyer_cancel_pending_ack: boolean;
-        deal_active: boolean;
-        buyer_marked_complete: boolean;
-        seller_marked_complete: boolean;
-        buyer_marked_cancel: boolean;
-        seller_marked_cancel: boolean;
-      }
-    >
+    Array<ReturnType<OffersService['serializeOffer']> & SellerDealFlags>
   > {
     const list = await this.offers.find({
       where: {
@@ -890,23 +895,29 @@ export class OffersService {
     const activeId = partReq?.activeAcceptanceOffer?.id ?? null;
 
     const agMap = await this.loadAggregates([sellerId]);
-    return list.map((o) => {
-      const deal_active =
-        activeId === o.id &&
-        o.interactionState === OfferInteractionState.CONTACT_REVEALED;
-      const base = this.serializeOffer(o, sellerId, agMap, requestId);
-      return {
-        ...base,
-        buyer_cancel_pending_ack:
-          o.interactionState === OfferInteractionState.BUYER_CANCELLED &&
-          !o.sellerAcknowledgedAt,
-        deal_active,
-        buyer_marked_complete: Boolean(o.buyerDealCompleteAt),
-        seller_marked_complete: Boolean(o.sellerDealCompleteAt),
-        buyer_marked_cancel: Boolean(o.buyerDealCancelAt),
-        seller_marked_cancel: Boolean(o.sellerDealCancelAt),
-      };
-    });
+    return list.map((o) => ({
+      ...this.serializeOffer(o, sellerId, agMap, requestId),
+      ...OffersService.withSellerDealFlags(o, activeId),
+    }));
+  }
+
+  /** Seller-side deal state flags for an offer (pure; shared with the operator module). */
+  static withSellerDealFlags(
+    o: Offer,
+    activeAcceptanceOfferId: string | null,
+  ): SellerDealFlags {
+    return {
+      buyer_cancel_pending_ack:
+        o.interactionState === OfferInteractionState.BUYER_CANCELLED &&
+        !o.sellerAcknowledgedAt,
+      deal_active:
+        activeAcceptanceOfferId === o.id &&
+        o.interactionState === OfferInteractionState.CONTACT_REVEALED,
+      buyer_marked_complete: Boolean(o.buyerDealCompleteAt),
+      seller_marked_complete: Boolean(o.sellerDealCompleteAt),
+      buyer_marked_cancel: Boolean(o.buyerDealCancelAt),
+      seller_marked_cancel: Boolean(o.sellerDealCancelAt),
+    };
   }
 
   /** Visible, non–mutually-cancelled offers per request (list meta for mine / feed). */

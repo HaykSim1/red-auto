@@ -36,6 +36,17 @@ function parseExpiryToDate(expiry: string): Date {
   return new Date(Date.now() + value * multipliers[unit]);
 }
 
+/** Managed shop personas are operated by staff via /v1/operator/*; they never sign in themselves. */
+function assertNotManagedShop(user: User): void {
+  if (user.isManagedShop) {
+    throw new ApiException(
+      'managed_shop_no_login',
+      'This account is operated by Red Auto staff and cannot sign in.',
+      HttpStatus.FORBIDDEN,
+    );
+  }
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -59,7 +70,11 @@ export class AuthService {
     const testPhoneBuyer = this.config.get<string>('TEST_PHONE_BUYER');
     const testOtpCodeBuyer = this.config.get<string>('TEST_OTP_CODE_BUYER');
     const isTestPhone = !!(testPhone && testOtpCode && phone === testPhone);
-    const isTestPhoneBuyer = !!(testPhoneBuyer && testOtpCodeBuyer && phone === testPhoneBuyer);
+    const isTestPhoneBuyer = !!(
+      testPhoneBuyer &&
+      testOtpCodeBuyer &&
+      phone === testPhoneBuyer
+    );
 
     const code = isTestPhone
       ? testOtpCode
@@ -163,6 +178,7 @@ export class AuthService {
         HttpStatus.FORBIDDEN,
       );
     }
+    assertNotManagedShop(user);
 
     const resolvedRole = user.role ?? UserRole.USER;
     const payload: JwtUserPayload = {
@@ -245,6 +261,7 @@ export class AuthService {
         HttpStatus.FORBIDDEN,
       );
     }
+    assertNotManagedShop(user);
     if (user.deletedAt) {
       throw new ApiException(
         'account_deleted',
@@ -304,6 +321,7 @@ export class AuthService {
         HttpStatus.FORBIDDEN,
       );
     }
+    assertNotManagedShop(user);
     if (user.deletedAt) {
       throw new ApiException(
         'account_deleted',

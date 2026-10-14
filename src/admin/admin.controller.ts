@@ -62,7 +62,7 @@ export class AdminController {
   @Public()
   @Roles()
   @Post('auth/login')
-  @ApiOperation({ summary: 'Admin email + password login' })
+  @ApiOperation({ summary: 'Admin / operator email + password login' })
   @ApiCreatedResponse({ type: AuthOtpVerifyResponseDto })
   adminLogin(@Body() dto: AdminLoginDto) {
     return this.admin.adminLogin(dto.email, dto.password);

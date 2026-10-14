@@ -68,7 +68,8 @@ export class AdminService {
       where: { email: email.toLowerCase().trim() },
     });
 
-    if (!user || user.role !== UserRole.ADMIN || !user.passwordHash) {
+    const staffRoles: UserRole[] = [UserRole.ADMIN, UserRole.OPERATOR];
+    if (!user || !staffRoles.includes(user.role) || !user.passwordHash) {
       throw new ApiException(
         'invalid_credentials',
         'Invalid email or password.',
@@ -530,7 +531,9 @@ export class AdminService {
         `SELECT seller_id, avg_score, rating_count FROM seller_rating_aggregate WHERE seller_id = ANY($1)`,
         [ids],
       );
-      ratingMap = Object.fromEntries(agg.map((r: Record<string, unknown>) => [r.seller_id, r]));
+      ratingMap = Object.fromEntries(
+        agg.map((r: Record<string, unknown>) => [r.seller_id, r]),
+      );
     }
 
     return {

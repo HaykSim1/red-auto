@@ -60,6 +60,13 @@ export class User {
   @Column({ type: 'boolean', name: 'is_special_buyer', default: false })
   isSpecialBuyer: boolean;
 
+  /**
+   * Admin-created seller persona operated by staff (role `operator`). Cannot sign in via OTP;
+   * offers are submitted on its behalf through /v1/operator/*.
+   */
+  @Column({ type: 'boolean', name: 'is_managed_shop', default: false })
+  isManagedShop: boolean;
+
   @Column({ type: 'text', unique: true, nullable: true })
   email: string | null;
 
