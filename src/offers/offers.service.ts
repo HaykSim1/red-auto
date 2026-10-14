@@ -35,6 +35,28 @@ function assertSellerOrAdminForHistory(role: UserRole): void {
   }
 }
 
+/**
+ * Offers in a terminal state for the seller: deal completed, mutually cancelled,
+ * or buyer-cancelled and acknowledged. Alias `o` must be the offer in the query.
+ */
+export function terminalOfferPredicate(): Brackets {
+  return new Brackets((w) => {
+    w.where('o.interaction_state = :dc', {
+      dc: OfferInteractionState.DEAL_COMPLETED,
+    })
+      .orWhere('o.interaction_state = :mc', {
+        mc: OfferInteractionState.MUTUALLY_CANCELLED,
+      })
+      .orWhere(
+        new Brackets((w2) => {
+          w2.where('o.interaction_state = :bc', {
+            bc: OfferInteractionState.BUYER_CANCELLED,
+          }).andWhere('o.seller_acknowledged_at IS NOT NULL');
+        }),
+      );
+  });
+}
+
 export interface SellerDealFlags {
   buyer_cancel_pending_ack: boolean;
   deal_active: boolean;
@@ -704,7 +726,7 @@ export class OffersService {
     return list.map((o) => this.serializeOffer(o, authorId, agMap, requestId));
   }
 
-  private async loadAggregates(
+  async loadAggregates(
     sellerIds: string[],
   ): Promise<Map<string, SellerRatingAggregate>> {
     const map = new Map<string, SellerRatingAggregate>();
@@ -997,23 +1019,7 @@ export class OffersService {
       .andWhere('o.moderation_state = :ms', {
         ms: ModerationState.VISIBLE,
       })
-      .andWhere(
-        new Brackets((w) => {
-          w.where('o.interaction_state = :dc', {
-            dc: OfferInteractionState.DEAL_COMPLETED,
-          })
-            .orWhere('o.interaction_state = :mc', {
-              mc: OfferInteractionState.MUTUALLY_CANCELLED,
-            })
-            .orWhere(
-              new Brackets((w2) => {
-                w2.where('o.interaction_state = :bc', {
-                  bc: OfferInteractionState.BUYER_CANCELLED,
-                }).andWhere('o.seller_acknowledged_at IS NOT NULL');
-              }),
-            );
-        }),
-      )
+      .andWhere(terminalOfferPredicate())
       .getCount();
     return cnt > 0;
   }

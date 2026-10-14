@@ -880,3 +880,79 @@ export class AdminModerationResultDto {
   @ApiProperty() id: string;
   @ApiProperty() moderation_state: string;
 }
+
+// ── Operator (staff acting for managed shop personas) ──
+
+export class OperatorShopDto {
+  @ApiProperty() id: string;
+  @ApiProperty() phone: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_name:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shop_address:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_phone:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) seller_telegram:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  shop_logo_storage_key: string | null;
+}
+
+export class OperatorShopListDto {
+  @ApiProperty({ type: [OperatorShopDto] }) items: OperatorShopDto[];
+}
+
+export class OperatorRequestRowDto extends RequestPublicDto {
+  @ApiProperty({
+    type: [String],
+    description: 'Managed shops that already have a live offer on this request',
+  })
+  answered_by_shop_ids: string[];
+}
+
+export class PaginatedOperatorRequestListDto {
+  @ApiProperty({ type: [OperatorRequestRowDto] })
+  items: OperatorRequestRowDto[];
+  @ApiProperty({ type: String, nullable: true }) next_cursor: string | null;
+}
+
+/** Offer by a managed shop, with seller-side deal flags and audit. */
+export class OperatorOfferDto extends OfferDto {
+  @ApiProperty() interaction_state: string;
+  @ApiProperty() buyer_cancel_pending_ack: boolean;
+  @ApiProperty() deal_active: boolean;
+  @ApiProperty() buyer_marked_complete: boolean;
+  @ApiProperty() seller_marked_complete: boolean;
+  @ApiProperty() buyer_marked_cancel: boolean;
+  @ApiProperty() seller_marked_cancel: boolean;
+  @ApiPropertyOptional({ type: String, nullable: true }) created_by_user_id:
+    | string
+    | null;
+  @ApiProperty() request_summary: string;
+  @ApiProperty() request_status: string;
+}
+
+export class OperatorRequestDetailDto extends RequestPublicDto {
+  @ApiProperty({ type: [OperatorOfferDto] })
+  persona_offers: OperatorOfferDto[];
+  @ApiPropertyOptional({ type: String, nullable: true })
+  active_acceptance_offer_id: string | null;
+}
+
+export class OperatorOffersResponseDto {
+  @ApiProperty() total: number;
+  @ApiProperty({ type: [OperatorOfferDto] }) items: OperatorOfferDto[];
+}
+
+export class OkResponseDto {
+  @ApiProperty({ example: true }) ok: boolean;
+}
+
+export class OperatorDealCompleteResultDto {
+  @ApiProperty() ok: boolean;
+  @ApiProperty() finalized: boolean;
+}

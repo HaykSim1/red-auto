@@ -22,6 +22,7 @@ import { RequestsModule } from './requests/requests.module';
 import { SelectionsModule } from './selections/selections.module';
 import { SellerApplicationsModule } from './seller-applications/seller-applications.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { OperatorModule } from './operator/operator.module';
 import { UsersModule } from './users/users.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 
@@ -57,6 +58,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     UploadsModule,
     RealtimeModule,
     AdminModule,
+    OperatorModule,
     AnalyticsModule,
     AppVersionModule,
     TasksModule,
