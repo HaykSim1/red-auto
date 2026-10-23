@@ -2,8 +2,6 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-
-const BCRYPT_ROUNDS = 10;
 import { Repository, Between } from 'typeorm';
 import { AnalyticsQueryService } from '../analytics/analytics-query.service';
 import { ApiException } from '../common/exceptions/api.exception';
@@ -23,6 +21,8 @@ import { CreateOperatorDto } from './dto/create-operator.dto';
 import { PatchOperatorDto } from './dto/patch-operator.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { UpdateAppVersionDto } from './dto/update-app-version.dto';
+
+const BCRYPT_ROUNDS = 10;
 
 /**
  * Staff (admin / operator) access tokens live longer than the 15-minute user

@@ -22,7 +22,7 @@ export class CreateOperatorDto {
 
   @ApiProperty({ example: 'Ani' })
   @IsString()
-  @MinLength(1)
+  @Matches(/\S/, { message: 'display_name must not be blank' })
   @MaxLength(200)
   display_name: string;
 
