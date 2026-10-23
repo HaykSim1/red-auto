@@ -6,9 +6,12 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
+import { VIN_RE } from '../../vehicles/vin';
 import { PartRequestStatus } from '../../database/enums';
 
 export const MAX_REQUEST_PHOTOS = 10;
@@ -28,6 +31,10 @@ export class PatchRequestDto {
   @IsOptional()
   @IsString()
   @MaxLength(32)
+  @ValidateIf((o: { vin_text?: string | null }) => Boolean(o.vin_text))
+  @Matches(VIN_RE, {
+    message: 'vin_text must be a 17-character VIN (no I, O, Q)',
+  })
   vin_text?: string | null;
 
   @ApiPropertyOptional({ type: String, nullable: true })

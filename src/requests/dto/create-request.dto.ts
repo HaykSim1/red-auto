@@ -4,10 +4,13 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   IsUUID,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
+import { VIN_RE } from '../../vehicles/vin';
 
 export class CreateRequestDto {
   @ApiProperty()
@@ -24,6 +27,10 @@ export class CreateRequestDto {
   @IsOptional()
   @IsString()
   @MaxLength(32)
+  @ValidateIf((o: { vin_text?: string | null }) => Boolean(o.vin_text))
+  @Matches(VIN_RE, {
+    message: 'vin_text must be a 17-character VIN (no I, O, Q)',
+  })
   vin_text?: string | null;
 
   @ApiPropertyOptional()
