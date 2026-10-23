@@ -2,6 +2,8 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+
+const BCRYPT_ROUNDS = 10;
 import { Repository, Between } from 'typeorm';
 import { AnalyticsQueryService } from '../analytics/analytics-query.service';
 import { ApiException } from '../common/exceptions/api.exception';
@@ -17,6 +19,8 @@ import { PushService } from '../push/push.service';
 import { RatingsService } from '../ratings/ratings.service';
 import { CreateManagedShopDto } from './dto/create-managed-shop.dto';
 import { PatchManagedShopDto } from './dto/patch-managed-shop.dto';
+import { CreateOperatorDto } from './dto/create-operator.dto';
+import { PatchOperatorDto } from './dto/patch-operator.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { UpdateAppVersionDto } from './dto/update-app-version.dto';
 
@@ -619,6 +623,81 @@ export class AdminService {
   }
 
   // ── Managed shops (staff-operated seller personas) ──
+
+  // ── Operators (staff accounts) ──
+
+  private serializeOperator(u: User) {
+    return {
+      id: u.id,
+      email: u.email ?? '',
+      phone: u.phone,
+      display_name: u.displayName ?? null,
+      blocked_at: u.blockedAt ? u.blockedAt.toISOString() : null,
+      created_at: u.createdAt.toISOString(),
+    };
+  }
+
+  private async assertEmailFree(email: string) {
+    const existing = await this.users.findOne({ where: { email } });
+    if (existing) {
+      throw new ApiException(
+        'email_taken',
+        'A user with this email already exists.',
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
+
+  async listOperators(limit: number, offset: number) {
+    const [rows, total] = await this.users.findAndCount({
+      where: { role: UserRole.OPERATOR },
+      order: { createdAt: 'DESC' },
+      take: Math.min(limit, 100),
+      skip: offset,
+    });
+    return { total, items: rows.map((u) => this.serializeOperator(u)) };
+  }
+
+  async createOperator(dto: CreateOperatorDto) {
+    const email = dto.email.trim().toLowerCase();
+    const phone = dto.phone.trim();
+    await this.assertEmailFree(email);
+    await this.assertPhoneFree(phone);
+    const saved = await this.users.save(
+      this.users.create({
+        phone,
+        email,
+        role: UserRole.OPERATOR,
+        displayName: dto.display_name.trim(),
+        passwordHash: await bcrypt.hash(dto.password, BCRYPT_ROUNDS),
+        sellerPhone: null,
+        sellerTelegram: null,
+      }),
+    );
+    return this.serializeOperator(saved);
+  }
+
+  async patchOperator(id: string, dto: PatchOperatorDto) {
+    const u = await this.users.findOne({ where: { id } });
+    if (!u || u.role !== UserRole.OPERATOR) {
+      throw new ApiException(
+        'operator_not_found',
+        'Operator not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (dto.phone !== undefined) {
+      const phone = dto.phone.trim();
+      if (phone !== u.phone) await this.assertPhoneFree(phone, u.id);
+      u.phone = phone;
+    }
+    if (dto.display_name !== undefined) u.displayName = dto.display_name.trim();
+    if (dto.password !== undefined) {
+      u.passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    }
+    const saved = await this.users.save(u);
+    return this.serializeOperator(saved);
+  }
 
   private serializeManagedShop(u: User) {
     return {

@@ -30,6 +30,8 @@ import {
   AdminFeaturedShopListDto,
   AdminManagedShopListDto,
   AdminManagedShopRowDto,
+  AdminOperatorListDto,
+  AdminOperatorRowDto,
   AdminHomeBannerListDto,
   AdminModerationResultDto,
   AdminRequestDetailResponseDto,
@@ -46,6 +48,8 @@ import { AdminLoginDto } from './dto/admin-login.dto';
 import { CreateHomeBannerDto } from './dto/create-home-banner.dto';
 import { CreateManagedShopDto } from './dto/create-managed-shop.dto';
 import { PatchManagedShopDto } from './dto/patch-managed-shop.dto';
+import { CreateOperatorDto } from './dto/create-operator.dto';
+import { PatchOperatorDto } from './dto/patch-operator.dto';
 import { PatchHomeBannerDto } from './dto/patch-home-banner.dto';
 import { PatchModerationDto } from './dto/patch-moderation.dto';
 import { SetSpecialBuyerDto } from './dto/set-special-buyer.dto';
@@ -279,6 +283,38 @@ export class AdminController {
     @Body() dto: PatchManagedShopDto,
   ) {
     return this.admin.patchManagedShop(id, dto);
+  }
+
+  @Get('operators')
+  @ApiOperation({ summary: 'List staff operators (admin-panel accounts)' })
+  @ApiOkResponse({ type: AdminOperatorListDto })
+  listOperators(
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ) {
+    return this.admin.listOperators(Math.min(Math.max(limit, 1), 100), offset);
+  }
+
+  @Post('operators')
+  @ApiOperation({
+    summary:
+      'Create a staff operator: email + password login, role operator (no OTP)',
+  })
+  @ApiCreatedResponse({ type: AdminOperatorRowDto })
+  createOperator(@Body() dto: CreateOperatorDto) {
+    return this.admin.createOperator(dto);
+  }
+
+  @Patch('operators/:id')
+  @ApiOperation({
+    summary: 'Update an operator (name, phone); `password` resets the password',
+  })
+  @ApiOkResponse({ type: AdminOperatorRowDto })
+  patchOperator(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PatchOperatorDto,
+  ) {
+    return this.admin.patchOperator(id, dto);
   }
 
   @Get('shops/:id')

@@ -451,6 +451,25 @@ export class AdminManagedShopListDto {
   @ApiProperty() total: number;
 }
 
+export class AdminOperatorRowDto {
+  @ApiProperty() id: string;
+  @ApiProperty() email: string;
+  @ApiProperty() phone: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) display_name:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) blocked_at:
+    | string
+    | null;
+  @ApiProperty() created_at: string;
+}
+
+export class AdminOperatorListDto {
+  @ApiProperty({ type: [AdminOperatorRowDto] })
+  items: AdminOperatorRowDto[];
+  @ApiProperty() total: number;
+}
+
 export class AdminFeaturedShopListDto {
   @ApiProperty({ type: [AdminFeaturedShopRowDto] })
   items: AdminFeaturedShopRowDto[];

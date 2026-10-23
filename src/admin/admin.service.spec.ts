@@ -7,6 +7,7 @@ jest.mock('../push/push.service', () => ({
 }));
 
 import { HttpStatus } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
@@ -1448,6 +1449,194 @@ describe('AdminService managed shops', () => {
         true,
         false,
       ]);
+    });
+  });
+});
+
+function savedUser(save: jest.Mock): User {
+  const calls = save.mock.calls as [User][];
+  return calls[0][0];
+}
+
+describe('AdminService operators (staff accounts)', () => {
+  let service: AdminService;
+  let usersRepo: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    findAndCount: jest.Mock;
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AdminService,
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn((v: Partial<User>) => v),
+            save: jest.fn((v: Partial<User>) =>
+              Promise.resolve({ id: 'op-1', createdAt: new Date(), ...v }),
+            ),
+            findAndCount: jest.fn(),
+          },
+        },
+        { provide: getRepositoryToken(PartRequest), useValue: {} },
+        { provide: getRepositoryToken(Offer), useValue: {} },
+        { provide: getRepositoryToken(SellerApplication), useValue: {} },
+        { provide: getRepositoryToken(AppVersionConfig), useValue: {} },
+        { provide: getRepositoryToken(SellerRating), useValue: {} },
+        { provide: RatingsService, useValue: {} },
+        { provide: PushService, useValue: {} },
+        { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        { provide: AnalyticsQueryService, useValue: {} },
+      ],
+    }).compile();
+
+    service = module.get(AdminService);
+    usersRepo = module.get(getRepositoryToken(User));
+  });
+
+  const createDto = {
+    email: 'Op@Red-Auto.local ',
+    password: 'correct-horse',
+    display_name: 'Ani',
+    phone: '+37491000555',
+  };
+
+  const operatorRow = {
+    id: 'op-1',
+    role: UserRole.OPERATOR,
+    email: 'op@red-auto.local',
+    phone: '+37491000555',
+    displayName: 'Ani',
+    passwordHash: 'old-hash',
+    blockedAt: null,
+    createdAt: new Date('2026-10-01T00:00:00Z'),
+  } as unknown as User;
+
+  describe('listOperators', () => {
+    it('lists only operator rows without exposing the password hash', async () => {
+      usersRepo.findAndCount.mockResolvedValue([[operatorRow], 1]);
+
+      const res = await service.listOperators(50, 0);
+
+      expect(usersRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { role: UserRole.OPERATOR } }),
+      );
+      expect(res.total).toBe(1);
+      expect(res.items[0]).toEqual({
+        id: 'op-1',
+        email: 'op@red-auto.local',
+        phone: '+37491000555',
+        display_name: 'Ani',
+        blocked_at: null,
+        created_at: '2026-10-01T00:00:00.000Z',
+      });
+      expect(JSON.stringify(res)).not.toContain('hash');
+    });
+  });
+
+  describe('createOperator', () => {
+    it('stores a bcrypt hash of the password, never the password itself', async () => {
+      usersRepo.findOne.mockResolvedValue(null);
+
+      const res = await service.createOperator(createDto);
+
+      const saved = savedUser(usersRepo.save);
+      expect(saved.role).toBe(UserRole.OPERATOR);
+      expect(saved.email).toBe('op@red-auto.local');
+      expect(saved.passwordHash).not.toBe('correct-horse');
+      expect(await bcrypt.compare('correct-horse', saved.passwordHash!)).toBe(
+        true,
+      );
+      expect(res).toMatchObject({ id: 'op-1', email: 'op@red-auto.local' });
+      expect(JSON.stringify(res)).not.toContain('correct-horse');
+    });
+
+    it('throws 409 email_taken when the email is already used', async () => {
+      usersRepo.findOne.mockImplementation(
+        ({ where }: { where: { email?: string; phone?: string } }) =>
+          Promise.resolve(where.email ? { id: 'someone' } : null),
+      );
+
+      await expect(service.createOperator(createDto)).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        code: 'email_taken',
+      });
+      expect(usersRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('throws 409 phone_taken when the phone is already used', async () => {
+      usersRepo.findOne.mockImplementation(
+        ({ where }: { where: { email?: string; phone?: string } }) =>
+          Promise.resolve(where.phone ? { id: 'someone' } : null),
+      );
+
+      await expect(service.createOperator(createDto)).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        code: 'phone_taken',
+      });
+    });
+  });
+
+  describe('patchOperator', () => {
+    it('throws 404 operator_not_found for a user that is not an operator', async () => {
+      usersRepo.findOne.mockResolvedValue({
+        ...operatorRow,
+        role: UserRole.ADMIN,
+      });
+
+      await expect(
+        service.patchOperator('op-1', { display_name: 'X' }),
+      ).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: 'operator_not_found',
+      });
+    });
+
+    it('keeps the existing password hash when no password is given', async () => {
+      usersRepo.findOne.mockResolvedValue({ ...operatorRow });
+
+      await service.patchOperator('op-1', { display_name: 'Ani K.' });
+
+      const saved = savedUser(usersRepo.save);
+      expect(saved.displayName).toBe('Ani K.');
+      expect(saved.passwordHash).toBe('old-hash');
+    });
+
+    it('re-hashes the password when a new one is given', async () => {
+      usersRepo.findOne.mockResolvedValue({ ...operatorRow });
+
+      await service.patchOperator('op-1', { password: 'new-password-1' });
+
+      const saved = savedUser(usersRepo.save);
+      expect(saved.passwordHash).not.toBe('old-hash');
+      expect(saved.passwordHash).not.toBe('new-password-1');
+      expect(await bcrypt.compare('new-password-1', saved.passwordHash!)).toBe(
+        true,
+      );
+    });
+
+    it('rejects a phone change that collides with another user', async () => {
+      usersRepo.findOne.mockImplementation(
+        ({ where }: { where: { id?: string; phone?: string } }) =>
+          Promise.resolve(
+            where.id
+              ? { ...operatorRow }
+              : where.phone
+                ? { id: 'other' }
+                : null,
+          ),
+      );
+
+      await expect(
+        service.patchOperator('op-1', { phone: '+37491000999' }),
+      ).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        code: 'phone_taken',
+      });
     });
   });
 });
