@@ -1013,3 +1013,20 @@ export class OperatorDealCompleteResultDto {
   @ApiProperty() ok: boolean;
   @ApiProperty() finalized: boolean;
 }
+
+// ── Inventory ──
+
+export class CategoryLabelsDto {
+  @ApiProperty() hy: string;
+  @ApiProperty() ru: string;
+  @ApiProperty() en: string;
+}
+
+export class PartCategoryDto {
+  @ApiProperty() key: string;
+  @ApiProperty({ type: CategoryLabelsDto }) labels: CategoryLabelsDto;
+}
+
+export class PartCategoryGroupDto extends PartCategoryDto {
+  @ApiProperty({ type: [PartCategoryDto] }) children: PartCategoryDto[];
+}

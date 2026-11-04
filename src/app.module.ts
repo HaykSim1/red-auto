@@ -14,6 +14,7 @@ import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './database/database.module';
 import { DevicesModule } from './devices/devices.module';
 import { HomeModule } from './home/home.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { OffersModule } from './offers/offers.module';
 import { PushModule } from './push/push.module';
 import { RatingsModule } from './ratings/ratings.module';
@@ -50,6 +51,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     SellerApplicationsModule,
     VehiclesModule,
     HomeModule,
+    InventoryModule,
     RequestsModule,
     OffersModule,
     SelectionsModule,
