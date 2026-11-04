@@ -1202,6 +1202,13 @@ export class InventoryRecognitionDto {
   @ApiPropertyOptional({ type: String, nullable: true }) error_code:
     | string
     | null;
+  @ApiProperty({ type: [String] }) photo_storage_keys: string[];
+  @ApiPropertyOptional({ type: String, nullable: true }) barcode_hint:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) text_hint:
+    | string
+    | null;
   @ApiProperty() created_at: string;
   @ApiPropertyOptional({ type: String, nullable: true }) finished_at:
     | string

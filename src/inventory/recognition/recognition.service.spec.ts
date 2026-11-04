@@ -232,6 +232,9 @@ describe('RecognitionService', () => {
       possible_duplicate_item_id: null,
       error_code: null,
       finished_at: null,
+      photo_storage_keys: [KEY(1), KEY(2), KEY(3)],
+      barcode_hint: '4047024063303',
+      text_hint: 'front axle',
     });
     expect(store[0]).toMatchObject({
       shop: { id: SHOP },

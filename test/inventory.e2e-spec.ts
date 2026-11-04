@@ -274,15 +274,20 @@ describe('Shop inventory (e2e)', () => {
   });
 
   it('POST /inventory/recognitions -> 202 pending, GET -> done with the stubbed result', async () => {
+    const postedKey = photoKey();
     const created = await http()
       .post('/v1/inventory/recognitions')
       .set(auth(sellerToken))
-      .send({ photo_storage_keys: [photoKey()] })
+      .send({ photo_storage_keys: [postedKey] })
       .expect(202);
     const createdBody = created.body as { id: string; status: string };
     expect(createdBody.status).toBe('pending');
 
-    let body: { status: string; result?: Record<string, unknown> } = {
+    let body: {
+      status: string;
+      result?: Record<string, unknown>;
+      photo_storage_keys?: string[];
+    } = {
       status: 'pending',
     };
     for (let i = 0; i < 40 && body.status !== 'done'; i++) {
@@ -294,6 +299,7 @@ describe('Shop inventory (e2e)', () => {
       body = res.body as typeof body;
     }
     expect(body.status).toBe('done');
+    expect(body.photo_storage_keys).toEqual([postedKey]);
     expect(body.result).toMatchObject({
       brand: 'Bosch',
       name: 'Brake pads front',

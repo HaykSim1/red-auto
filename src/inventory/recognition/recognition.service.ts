@@ -356,6 +356,9 @@ export class RecognitionService implements OnModuleInit {
       result: row.result ?? null,
       possible_duplicate_item_id: row.possibleDuplicateItemId ?? null,
       error_code: row.errorCode ?? null,
+      photo_storage_keys: row.photoStorageKeys ?? [],
+      barcode_hint: row.barcodeHint ?? null,
+      text_hint: row.textHint ?? null,
       created_at: row.createdAt.toISOString(),
       finished_at: row.finishedAt ? row.finishedAt.toISOString() : null,
     };
