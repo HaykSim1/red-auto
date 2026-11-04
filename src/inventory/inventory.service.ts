@@ -428,7 +428,9 @@ export class InventoryService {
       if (category.includes('.')) {
         qb.andWhere('i.category_key = :cat', { cat: category });
       } else {
-        qb.andWhere('i.category_key LIKE :catp', { catp: `${category}.%` });
+        qb.andWhere('i.category_key LIKE :catp', {
+          catp: `${category.replace(/[\\%_]/g, '\\$&')}.%`,
+        });
       }
     }
     return qb;
