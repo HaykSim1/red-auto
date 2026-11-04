@@ -2,6 +2,9 @@ import { AnalyticsMarketplaceDaily } from './analytics-marketplace-daily.entity'
 import { AppVersionConfig } from './app-version-config.entity';
 import { Device } from './device.entity';
 import { HomeBanner } from './home-banner.entity';
+import { InventoryItemPhoto } from './inventory-item-photo.entity';
+import { InventoryItem } from './inventory-item.entity';
+import { InventoryRecognition } from './inventory-recognition.entity';
 import { OfferPhoto } from './offer-photo.entity';
 import { Offer } from './offer.entity';
 import { OtpSession } from './otp-session.entity';
@@ -32,6 +35,9 @@ export const typeOrmEntities = [
   SellerRatingAggregate,
   Device,
   SellerApplication,
+  InventoryItem,
+  InventoryItemPhoto,
+  InventoryRecognition,
 ] as const;
 
 export {
@@ -39,6 +45,9 @@ export {
   AppVersionConfig,
   Device,
   HomeBanner,
+  InventoryItem,
+  InventoryItemPhoto,
+  InventoryRecognition,
   Offer,
   OfferPhoto,
   OtpSession,

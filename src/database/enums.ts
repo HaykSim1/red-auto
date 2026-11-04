@@ -53,3 +53,16 @@ export enum SellerApplicationStatus {
   APPROVED = 'approved',
   REJECTED = 'rejected',
 }
+
+export enum InventoryItemStatus {
+  DRAFT = 'draft',
+  ACTIVE = 'active',
+  ARCHIVED = 'archived',
+}
+
+export enum InventoryRecognitionStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  DONE = 'done',
+  FAILED = 'failed',
+}
