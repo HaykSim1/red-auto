@@ -5,6 +5,7 @@ import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerRating } from '../database/entities/seller-rating.entity';
 import { User } from '../database/entities/user.entity';
+import { InventoryModule } from '../inventory/inventory.module';
 import { HomeBannersService } from './home-banners.service';
 import { HomeController } from './home.controller';
 import { HomeService } from './home.service';
@@ -19,6 +20,7 @@ import { ShopsController } from './shops.controller';
       SellerRating,
       HomeBanner,
     ]),
+    InventoryModule,
   ],
   controllers: [HomeController, ShopsController],
   providers: [HomeService, HomeBannersService],

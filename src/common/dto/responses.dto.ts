@@ -173,6 +173,8 @@ export class ShopDetailResponseDto {
     | null;
   /** Admin-curated featured flag; clients may show a “verified” style badge. */
   @ApiProperty() is_featured: boolean;
+  /** Number of active inventory items in the shop catalog. */
+  @ApiProperty() items_count: number;
   @ApiPropertyOptional({ type: Number, nullable: true }) rating_avg:
     | number
     | null;

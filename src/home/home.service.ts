@@ -5,6 +5,7 @@ import { Offer } from '../database/entities/offer.entity';
 import { PartRequest } from '../database/entities/part-request.entity';
 import { SellerRating } from '../database/entities/seller-rating.entity';
 import { User } from '../database/entities/user.entity';
+import { InventoryService } from '../inventory/inventory.service';
 import {
   ModerationState,
   OfferInteractionState,
@@ -47,6 +48,7 @@ export type PublicShopDetail = {
   seller_phone: string | null;
   seller_telegram: string | null;
   is_featured: boolean;
+  items_count: number;
   rating_avg: number | null;
   rating_count: number;
   reviews: PublicShopReview[];
@@ -63,6 +65,7 @@ export class HomeService {
     private readonly users: Repository<User>,
     @InjectRepository(SellerRating)
     private readonly sellerRatings: Repository<SellerRating>,
+    private readonly inventory: InventoryService,
   ) {}
 
   async getSummary(
@@ -102,21 +105,21 @@ export class HomeService {
       myOpenOffersCount,
       latestPendingOffer,
     ] = await Promise.all([
-        this.requests.count({
-          where: { author: { id: userId }, status: PartRequestStatus.OPEN },
-        }),
-        this.offers
-          .createQueryBuilder('o')
-          .innerJoin('o.request', 'r')
-          .where('r.author_id = :uid', { uid: userId })
-          .andWhere('r.status = :st', { st: PartRequestStatus.OPEN })
-          .andWhere('o.interaction_state = :none', {
-            none: OfferInteractionState.NONE,
-          })
-          .getCount(),
-        openOffersQuery,
-        latestPendingOfferQuery,
-      ]);
+      this.requests.count({
+        where: { author: { id: userId }, status: PartRequestStatus.OPEN },
+      }),
+      this.offers
+        .createQueryBuilder('o')
+        .innerJoin('o.request', 'r')
+        .where('r.author_id = :uid', { uid: userId })
+        .andWhere('r.status = :st', { st: PartRequestStatus.OPEN })
+        .andWhere('o.interaction_state = :none', {
+          none: OfferInteractionState.NONE,
+        })
+        .getCount(),
+      openOffersQuery,
+      latestPendingOfferQuery,
+    ]);
 
     return {
       my_open_requests_count: myOpenRequestsCount,
@@ -156,6 +159,24 @@ export class HomeService {
           : null,
       rating_count: row.rating_count ?? 0,
     }));
+  }
+
+  /** Throws NotFoundException unless `sellerId` is a seller with a shop name. */
+  async assertPublicShop(sellerId: string): Promise<void> {
+    const rows = (await this.users.query(
+      `
+      SELECT 1
+      FROM users u
+      WHERE u.id = $1
+        AND u.role = $2
+        AND u.shop_name IS NOT NULL
+        AND btrim(u.shop_name) <> ''
+      `,
+      [sellerId, UserRole.SELLER],
+    )) as unknown[];
+    if (rows.length === 0) {
+      throw new NotFoundException();
+    }
   }
 
   async getPublicShopDetail(sellerId: string): Promise<PublicShopDetail> {
@@ -204,6 +225,7 @@ export class HomeService {
       seller_phone: phone.length > 0 ? phone : null,
       seller_telegram: row.seller_telegram?.trim() || null,
       is_featured: row.is_featured === true,
+      items_count: await this.inventory.countActive(sellerId),
       rating_avg:
         row.rating_avg != null && row.rating_avg !== ''
           ? Number(row.rating_avg)
