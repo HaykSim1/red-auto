@@ -52,6 +52,8 @@ export class UploadsService {
       prefix = `requests/${user.sub}`;
     } else if (dto.purpose === UploadPurpose.SHOP_LOGO) {
       prefix = `seller_shop_logos/${user.sub}`;
+    } else if (dto.purpose === UploadPurpose.INVENTORY_PHOTO) {
+      prefix = `inventory/${user.sub}`;
     } else {
       prefix = `offers/${user.sub}`;
     }
