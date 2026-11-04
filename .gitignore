@@ -22,3 +22,7 @@ coverage/
 
 # Git worktrees
 .worktrees/
+
+# local spike inputs (real box photos)
+scripts/spike-photos/*
+!scripts/spike-photos/.gitkeep
