@@ -29,8 +29,14 @@ describe('ListInventoryItemsQueryDto in_stock (implicit conversion)', () => {
     expect(dto.in_stock).toBeUndefined();
   });
 
-  it('unrecognised value -> ignored (undefined)', async () => {
-    const { dto } = await parse({ in_stock: 'maybe' });
-    expect(dto.in_stock).toBeUndefined();
+  it('unrecognised value -> isBoolean validation error', async () => {
+    const { errors } = await parse({ in_stock: 'maybe' });
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0].constraints).toHaveProperty('isBoolean');
+  });
+
+  it('array value -> isBoolean validation error', async () => {
+    const { errors } = await parse({ in_stock: ['true', 'false'] });
+    expect(errors[0]?.constraints).toHaveProperty('isBoolean');
   });
 });

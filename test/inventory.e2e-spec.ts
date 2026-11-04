@@ -246,6 +246,10 @@ describe('Shop inventory (e2e)', () => {
     const inIds = await ids('true');
     expect(inIds).toContain(live.id);
     expect(inIds).not.toContain(item.id);
+    await http()
+      .get('/v1/inventory/items?in_stock=maybe')
+      .set(auth(sellerToken))
+      .expect(400);
   });
 
   it('archived item disappears from the public list and GET /shops/:id/items/:itemId -> 404', async () => {

@@ -5,10 +5,10 @@ import { ShopCatalogQueryDto } from './shop-catalog-query.dto';
 
 // Reads the raw value: with enableImplicitConversion the string "false" is
 // already coerced to true (Boolean("false")) before @Transform sees `value`.
-function parseBool(raw: unknown): boolean | undefined {
+function parseBool(raw: unknown): unknown {
   if (raw === true || raw === 'true') return true;
   if (raw === false || raw === 'false') return false;
-  return undefined;
+  return raw; // unrecognised values reach @IsBoolean and yield a 400
 }
 
 export class ListInventoryItemsQueryDto extends ShopCatalogQueryDto {
