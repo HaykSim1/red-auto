@@ -1144,3 +1144,64 @@ export class ShopCatalogListResponseDto {
     | string
     | null;
 }
+
+export class RecognitionFitmentDto {
+  @ApiProperty() make: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) model: string | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) year_from:
+    | number
+    | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) year_to: number | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) engine: string | null;
+}
+
+export class RecognitionConfidenceDto {
+  @ApiProperty({ minimum: 0, maximum: 1 }) brand: number;
+  @ApiProperty({ minimum: 0, maximum: 1 }) part_number: number;
+  @ApiProperty({ minimum: 0, maximum: 1 }) barcode: number;
+  @ApiProperty({ minimum: 0, maximum: 1 }) name: number;
+  @ApiProperty({ minimum: 0, maximum: 1 }) category_key: number;
+  @ApiProperty({ minimum: 0, maximum: 1 }) fitments: number;
+}
+
+export class RecognitionResultDto {
+  @ApiPropertyOptional({ type: String, nullable: true }) brand: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) part_number:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) barcode: string | null;
+  @ApiProperty({ description: 'Russian name' }) name: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_en: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_hy: string | null;
+  @ApiProperty() category_key: string;
+  @ApiProperty({ type: [String] }) oem_numbers: string[];
+  @ApiProperty({ type: [RecognitionFitmentDto] })
+  fitments: RecognitionFitmentDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) fitment_note:
+    | string
+    | null;
+  @ApiProperty({ enum: ['new', 'used'] }) condition: 'new' | 'used';
+  @ApiProperty({ type: RecognitionConfidenceDto })
+  confidence: RecognitionConfidenceDto;
+  @ApiProperty({ type: [String] }) needs_review: string[];
+  @ApiPropertyOptional({ type: String, nullable: true }) notes_for_seller:
+    | string
+    | null;
+}
+
+export class InventoryRecognitionDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ enum: ['pending', 'processing', 'done', 'failed'] })
+  status: 'pending' | 'processing' | 'done' | 'failed';
+  @ApiPropertyOptional({ type: RecognitionResultDto, nullable: true })
+  result: RecognitionResultDto | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  possible_duplicate_item_id: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) error_code:
+    | string
+    | null;
+  @ApiProperty() created_at: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) finished_at:
+    | string
+    | null;
+}

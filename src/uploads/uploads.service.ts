@@ -1,12 +1,13 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { ApiException } from '../common/exceptions/api.exception';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { UserRole } from '../database/enums';
 import { PresignDto, UploadPurpose } from './dto/presign.dto';
+import { createS3Client } from './s3-client';
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
@@ -24,12 +25,9 @@ export class UploadsService {
     }
 
     const bucket = this.config.get<string>('S3_BUCKET');
-    const accessKey = this.config.get<string>('S3_ACCESS_KEY');
-    const secretKey = this.config.get<string>('S3_SECRET_KEY');
-    const region = this.config.get<string>('S3_REGION') ?? 'us-east-1';
-    const endpoint = this.config.get<string>('S3_ENDPOINT');
+    const client = createS3Client(this.config);
 
-    if (!bucket || !accessKey || !secretKey) {
+    if (!bucket || !client) {
       throw new ApiException(
         'uploads_unconfigured',
         'Object storage is not configured.',
@@ -58,19 +56,6 @@ export class UploadsService {
       prefix = `offers/${user.sub}`;
     }
     const key = `${prefix}/${randomUUID()}${ext}`;
-
-    const client = new S3Client({
-      region,
-      endpoint: endpoint || undefined,
-      forcePathStyle: Boolean(endpoint),
-      credentials: {
-        accessKeyId: accessKey,
-        secretAccessKey: secretKey,
-      },
-      // Default WHEN_SUPPORTED adds x-amz-checksum-* to presigned URLs; browsers cannot satisfy that
-      // reliably for direct PUT. WHEN_REQUIRED matches PutObject and keeps URLs simpler for admin web.
-      requestChecksumCalculation: 'WHEN_REQUIRED',
-    });
 
     // Omit ContentLength from the signature: browsers control Content-Length for fetch();
     // a signed length often causes S3 403 (SignatureDoesNotMatch / policy mismatch).

@@ -17,6 +17,7 @@ import {
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -24,21 +25,50 @@ import { Roles } from '../common/decorators/roles.decorator';
 import {
   InventoryItemDto,
   InventoryItemListResponseDto,
+  InventoryRecognitionDto,
   InventoryStatsDto,
 } from '../common/dto/responses.dto';
 import type { JwtUserPayload } from '../common/interfaces/jwt-user-payload.interface';
 import { UserRole } from '../database/enums';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
+import { CreateRecognitionDto } from './dto/create-recognition.dto';
 import { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import { InventoryService } from './inventory.service';
+import { RecognitionService } from './recognition/recognition.service';
 
 @ApiTags('inventory')
 @ApiBearerAuth('access-token')
 @Roles(UserRole.SELLER, UserRole.ADMIN)
 @Controller('inventory')
 export class InventoryController {
-  constructor(private readonly inventory: InventoryService) {}
+  constructor(
+    private readonly inventory: InventoryService,
+    private readonly recognition: RecognitionService,
+  ) {}
+
+  @Post('recognitions')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Start AI recognition of a part from 1-3 box photos',
+  })
+  @ApiResponse({ status: 202, type: InventoryRecognitionDto })
+  startRecognition(
+    @CurrentUser() u: JwtUserPayload,
+    @Body() dto: CreateRecognitionDto,
+  ) {
+    return this.recognition.start(u, dto);
+  }
+
+  @Get('recognitions/:id')
+  @ApiOperation({ summary: 'Recognition status and result (poll)' })
+  @ApiOkResponse({ type: InventoryRecognitionDto })
+  getRecognition(
+    @CurrentUser() u: JwtUserPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.recognition.get(u.sub, id);
+  }
 
   @Get('items')
   @ApiOperation({ summary: 'My inventory items (paginated, searchable)' })

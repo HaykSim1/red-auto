@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import type { RecognitionResult } from '../../inventory/recognition/recognition.schema';
 import { InventoryRecognitionStatus } from '../enums';
 import { User } from './user.entity';
 
@@ -40,9 +41,9 @@ export class InventoryRecognition {
   @Column({ type: 'text', name: 'text_hint', nullable: true })
   textHint: string | null;
 
-  /** Validated structured output; typed as RecognitionResult in a later task. */
+  /** Validated, post-processed structured output of the model. */
   @Column({ type: 'jsonb', nullable: true })
-  result: Record<string, unknown> | null;
+  result: RecognitionResult | null;
 
   /** Plain uuid (no FK) to avoid a circular reference with inventory_items. */
   @Column({ type: 'uuid', name: 'possible_duplicate_item_id', nullable: true })
