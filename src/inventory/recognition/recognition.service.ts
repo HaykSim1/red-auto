@@ -74,9 +74,14 @@ export class RecognitionService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    const swept = await this.sweepStale();
-    if (swept > 0) {
-      this.logger.warn(`Marked ${swept} interrupted recognition(s) failed`);
+    // Never block bootstrap on this housekeeping (e.g. a brief DB outage).
+    try {
+      const swept = await this.sweepStale();
+      if (swept > 0) {
+        this.logger.warn(`Marked ${swept} interrupted recognition(s) failed`);
+      }
+    } catch (err) {
+      this.logger.error(`Stale recognition sweep failed: ${errorMessage(err)}`);
     }
   }
 
@@ -308,9 +313,13 @@ export class RecognitionService implements OnModuleInit {
   // ── Helpers ──
 
   private async assertQuota(shopId: string): Promise<void> {
-    const dailyLimit =
-      Number(this.config.get('AI_RECOGNITION_DAILY_LIMIT')) ||
-      DEFAULT_DAILY_LIMIT;
+    // 0 is a valid kill switch: every recognition is over quota.
+    const configured = Number(
+      this.config.get('AI_RECOGNITION_DAILY_LIMIT') ?? DEFAULT_DAILY_LIMIT,
+    );
+    const dailyLimit = Number.isFinite(configured)
+      ? configured
+      : DEFAULT_DAILY_LIMIT;
     const now = new Date();
     const today = await this.recognitions.count({
       where: {

@@ -10,6 +10,13 @@ import { PresignDto, UploadPurpose } from './dto/presign.dto';
 import { createS3Client } from './s3-client';
 
 const MAX_BYTES = 15 * 1024 * 1024;
+/** The recognition model only reads these, keyed by the storage extension. */
+const INVENTORY_PHOTO_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
 
 @Injectable()
 export class UploadsService {
@@ -51,6 +58,13 @@ export class UploadsService {
     } else if (dto.purpose === UploadPurpose.SHOP_LOGO) {
       prefix = `seller_shop_logos/${user.sub}`;
     } else if (dto.purpose === UploadPurpose.INVENTORY_PHOTO) {
+      if (!INVENTORY_PHOTO_TYPES.has(this.mimeOf(dto.content_type))) {
+        throw new ApiException(
+          'unsupported_media_type',
+          'Inventory photos must be JPEG, PNG or WebP.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
       prefix = `inventory/${user.sub}`;
     } else {
       prefix = `offers/${user.sub}`;
@@ -78,8 +92,12 @@ export class UploadsService {
     };
   }
 
+  private mimeOf(contentType: string): string {
+    return contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+  }
+
   private guessExt(contentType: string): string {
-    const m = contentType.split(';')[0]?.trim().toLowerCase();
+    const m = this.mimeOf(contentType);
     if (m === 'image/jpeg' || m === 'image/jpg') return '.jpg';
     if (m === 'image/png') return '.png';
     if (m === 'image/webp') return '.webp';

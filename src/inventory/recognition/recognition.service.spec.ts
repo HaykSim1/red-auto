@@ -106,7 +106,10 @@ describe('RecognitionService', () => {
   const process = (id: string): Promise<void> =>
     (service as unknown as { process(id: string): Promise<void> }).process(id);
 
+  let dailyLimit: number;
+
   beforeEach(async () => {
+    dailyLimit = 500;
     store = [];
     repo = {
       create: jest.fn((v: Partial<InventoryRecognition>) => v),
@@ -169,7 +172,7 @@ describe('RecognitionService', () => {
           provide: ConfigService,
           useValue: {
             get: (k: string) =>
-              k === 'AI_RECOGNITION_DAILY_LIMIT' ? 500 : undefined,
+              k === 'AI_RECOGNITION_DAILY_LIMIT' ? dailyLimit : undefined,
           },
         },
       ],
@@ -273,6 +276,16 @@ describe('RecognitionService', () => {
       5_000,
     );
     expect(dayWhere.shop).toEqual({ id: SHOP });
+
+    // A daily limit of 0 is a kill switch, not "use the default".
+    dailyLimit = 0;
+    repo.count.mockResolvedValue(0);
+    await expectCode(
+      service.start(USER, { photo_storage_keys: [KEY(1)] }),
+      'ai_quota_exceeded',
+      429,
+    );
+    expect(repo.save).not.toHaveBeenCalled();
   });
 
   it('process stores a done result with normalized numbers, make and duplicate id', async () => {
@@ -471,5 +484,9 @@ describe('RecognitionService', () => {
     }
     expect(oldDone.status).toBe(InventoryRecognitionStatus.DONE);
     expect(fresh.status).toBe(InventoryRecognitionStatus.PENDING);
+
+    // A sweep failure on boot is logged, never thrown into bootstrap.
+    repo.update.mockRejectedValueOnce(new Error('db down'));
+    await expect(service.onModuleInit()).resolves.toBeUndefined();
   });
 });
