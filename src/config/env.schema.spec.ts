@@ -56,9 +56,17 @@ describe('env.schema — AI recognition', () => {
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();
   });
 
-  it('rejects a non-positive daily limit', () => {
+  it('accepts 0 as the kill switch', () => {
+    const env = validateEnv({ ...baseEnv, AI_RECOGNITION_DAILY_LIMIT: '0' });
+    expect(env.AI_RECOGNITION_DAILY_LIMIT).toBe(0);
+  });
+
+  it('rejects a negative or fractional daily limit', () => {
     expect(() =>
-      validateEnv({ ...baseEnv, AI_RECOGNITION_DAILY_LIMIT: '0' }),
+      validateEnv({ ...baseEnv, AI_RECOGNITION_DAILY_LIMIT: '-1' }),
+    ).toThrow();
+    expect(() =>
+      validateEnv({ ...baseEnv, AI_RECOGNITION_DAILY_LIMIT: '1.5' }),
     ).toThrow();
   });
 });

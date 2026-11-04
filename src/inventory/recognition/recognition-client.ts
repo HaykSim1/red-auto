@@ -72,8 +72,8 @@ export class ClaudeRecognitionClient implements RecognitionClient {
     if (!this.apiKey) throw new Error('ANTHROPIC_API_KEY is not set.');
     this.sdk ??= new Anthropic({
       apiKey: this.apiKey,
-      timeout: 180_000,
-      maxRetries: 1,
+      timeout: 140_000,
+      maxRetries: 0,
     });
 
     // `create` (not `parse`): the SDK's parse helper throws on non-JSON text

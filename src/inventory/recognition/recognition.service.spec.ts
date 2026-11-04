@@ -137,8 +137,12 @@ describe('RecognitionService', () => {
           } else {
             const statuses = criteria.status.value as string[];
             const before = criteria.createdAt.value as Date;
+            const onlyId = criteria.id as unknown as string | undefined;
             hits = store.filter(
-              (r) => statuses.includes(r.status) && r.createdAt < before,
+              (r) =>
+                (!onlyId || r.id === onlyId) &&
+                statuses.includes(r.status) &&
+                r.createdAt < before,
             );
           }
           hits.forEach((r) => Object.assign(r, patch));
@@ -491,5 +495,125 @@ describe('RecognitionService', () => {
     // A sweep failure on boot is logged, never thrown into bootstrap.
     repo.update.mockRejectedValueOnce(new Error('db down'));
     await expect(service.onModuleInit()).resolves.toBeUndefined();
+  });
+
+  it('get lazily fails a pending/processing row older than 3 minutes', async () => {
+    const old = new Date(Date.now() - 4 * 60_000);
+    const stuck = row({
+      createdAt: old,
+      status: InventoryRecognitionStatus.PROCESSING,
+    });
+    const other = row({ createdAt: old });
+    const fresh = row({ createdAt: new Date(Date.now() - 60_000) });
+    const done = row({
+      createdAt: old,
+      status: InventoryRecognitionStatus.DONE,
+    });
+
+    const dto = await service.get(SHOP, stuck.id);
+    expect(dto.status).toBe(InventoryRecognitionStatus.FAILED);
+    expect(dto.error_code).toBe('interrupted');
+    expect(dto.finished_at).not.toBeNull();
+    // Only the requested row is touched.
+    expect(other.status).toBe(InventoryRecognitionStatus.PENDING);
+
+    expect((await service.get(SHOP, fresh.id)).status).toBe(
+      InventoryRecognitionStatus.PENDING,
+    );
+    expect((await service.get(SHOP, done.id)).status).toBe(
+      InventoryRecognitionStatus.DONE,
+    );
+  });
+
+  describe('postProcess clamps model output to the item DTO limits', () => {
+    const run = async (over: Partial<RecognitionResult>) => {
+      client.recognize.mockResolvedValueOnce(call({ parsed: parsed(over) }));
+      const r = row();
+      await process(r.id);
+      expect(r.status).toBe(InventoryRecognitionStatus.DONE);
+      return r.result!;
+    };
+
+    it('caps oem_numbers at 30 entries of 120 chars and flags oem_numbers', async () => {
+      const many = Array.from({ length: 40 }, (_, i) => `OEM${i}`);
+      const res = await run({ oem_numbers: [...many, 'A'.repeat(200)] });
+      expect(res.oem_numbers).toHaveLength(30);
+      expect(res.oem_numbers[0]).toBe('OEM0');
+      expect(res.needs_review).toContain('oem_numbers');
+
+      const long = await run({ oem_numbers: ['B'.repeat(200)] });
+      expect(long.oem_numbers).toEqual(['B'.repeat(120)]);
+      expect(long.needs_review).toContain('oem_numbers');
+
+      const clean = await run({});
+      expect(clean.needs_review).not.toContain('oem_numbers');
+    });
+
+    it('cleans fitments: drops empty makes, caps lengths/count, fixes years', async () => {
+      const fit = {
+        make: 'Toyota',
+        model: 'Corolla',
+        year_from: 2013,
+        year_to: 2018,
+        engine: null,
+      };
+      const res = await run({
+        fitments: [
+          { ...fit, make: '  ' },
+          {
+            make: 'M'.repeat(80),
+            model: 'X'.repeat(80),
+            year_from: 2012.6,
+            year_to: 1900,
+            engine: 'E'.repeat(80),
+          },
+          { ...fit, year_from: 2020, year_to: 2010 },
+        ],
+      });
+      expect(res.fitments).toEqual([
+        {
+          make: 'M'.repeat(60),
+          model: 'X'.repeat(60),
+          year_from: 2013,
+          year_to: null,
+          engine: 'E'.repeat(60),
+        },
+        { ...fit, year_from: 2010, year_to: 2020 },
+      ]);
+      expect(res.needs_review).toContain('fitments');
+
+      const many = await run({
+        fitments: Array.from({ length: 60 }, () => ({ ...fit })),
+      });
+      expect(many.fitments).toHaveLength(50);
+      expect(many.needs_review).toContain('fitments');
+
+      const clean = await run({});
+      expect(clean.needs_review).not.toContain('fitments');
+    });
+
+    it('truncates text fields to their limits', async () => {
+      const res = await run({
+        brand: 'b'.repeat(150),
+        part_number: 'p'.repeat(150),
+        name: 'n'.repeat(250),
+        name_en: 'e'.repeat(250),
+        name_hy: 'h'.repeat(250),
+        fitment_note: 'f'.repeat(600),
+        notes_for_seller: 's'.repeat(1200),
+      });
+      expect(res.brand).toHaveLength(120);
+      expect(res.part_number).toHaveLength(120);
+      expect(res.name).toHaveLength(200);
+      expect(res.name_en).toHaveLength(200);
+      expect(res.name_hy).toHaveLength(200);
+      expect(res.fitment_note).toHaveLength(500);
+      expect(res.notes_for_seller).toHaveLength(1000);
+    });
+
+    it('drops a model barcode with a bad check digit', async () => {
+      const res = await run({ barcode: '4006381333932' });
+      expect(res.barcode).toBeNull();
+    });
   });
 });

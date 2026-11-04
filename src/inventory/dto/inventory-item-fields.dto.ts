@@ -9,6 +9,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
@@ -86,10 +87,16 @@ export class InventoryItemFieldsDto {
   @IsEnum(OfferCondition)
   condition?: OfferCondition;
 
-  @ApiPropertyOptional({ type: Number, nullable: true, minimum: 0 })
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: 0,
+    maximum: 9_999_999_999,
+  })
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(9_999_999_999)
   price_amount?: number | null;
 
   @ApiPropertyOptional({ default: 1, minimum: 0 })

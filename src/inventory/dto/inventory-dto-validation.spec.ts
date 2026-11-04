@@ -67,4 +67,16 @@ describe('inventory DTO null handling', () => {
       }),
     ).toContain('photo_storage_keys');
   });
+
+  it('price_amount is capped at 9 999 999 999', async () => {
+    expect(
+      await errorProps(CreateInventoryItemDto, {
+        name: 'x',
+        price_amount: 10_000_000_000,
+      }),
+    ).toContain('price_amount');
+    expect(
+      await errorProps(UpdateInventoryItemDto, { price_amount: 9_999_999_999 }),
+    ).toEqual([]);
+  });
 });

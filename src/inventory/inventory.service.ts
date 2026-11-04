@@ -32,7 +32,7 @@ import { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto
 import { ShopCatalogQueryDto } from './dto/shop-catalog-query.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import {
-  normalizeBarcode,
+  digitsOnly8to14,
   normalizeOemNumbers,
   normalizePartNumber,
 } from './normalize';
@@ -182,17 +182,24 @@ export class InventoryService {
       }
     }
 
+    const status =
+      dto.status === 'draft'
+        ? InventoryItemStatus.DRAFT
+        : InventoryItemStatus.ACTIVE;
+    // The AI flags come from the stored recognition, never from the client.
+    // Activating an item means the shop reviewed it, so the flags clear.
+    const ai = recognition?.result ?? null;
     const id = await this.ds.transaction(async (m) => {
       const items = m.getRepository(InventoryItem);
       const item = items.create({
         shop: { id: shopId },
-        status:
-          dto.status === 'draft'
-            ? InventoryItemStatus.DRAFT
-            : InventoryItemStatus.ACTIVE,
+        status,
         recognition,
-        needsReview: [],
-        aiConfidence: null,
+        needsReview:
+          ai && status === InventoryItemStatus.DRAFT
+            ? [...ai.needs_review]
+            : [],
+        aiConfidence: ai ? { ...ai.confidence } : null,
         ...this.fields(dto),
       } as Partial<InventoryItem>);
       const saved = await items.save(item);
@@ -221,6 +228,7 @@ export class InventoryService {
             ? InventoryItemStatus.DRAFT
             : InventoryItemStatus.ACTIVE;
       }
+      if (item.status === InventoryItemStatus.ACTIVE) item.needsReview = [];
       const { photos: _photos, ...rest } = item;
       void _photos;
       await items.save(rest as InventoryItem);
@@ -360,7 +368,8 @@ export class InventoryService {
       out.partNumberNormalized = normalizePartNumber(dto.part_number);
     }
     if (dto.barcode !== undefined) {
-      out.barcode = normalizeBarcode(dto.barcode);
+      // Not normalizeBarcode: shop-typed codes need not be GTINs (see normalize.ts).
+      out.barcode = digitsOnly8to14(dto.barcode);
     }
     if (dto.oem_numbers !== undefined) {
       out.oemNumbers = normalizeOemNumbers(dto.oem_numbers);
@@ -412,11 +421,18 @@ export class InventoryService {
       qb.andWhere(
         new Brackets((b) => {
           b.where('i.name ILIKE :like', { like })
+            .orWhere('i.name_en ILIKE :like', { like })
+            .orWhere('i.name_hy ILIKE :like', { like })
             .orWhere('i.brand ILIKE :like', { like })
             .orWhere('i.barcode = :term', { term });
           if (normalized) {
             b.orWhere('i.part_number_normalized ILIKE :pn', {
               pn: `%${normalized}%`,
+            });
+            // Same as `:pnNormalized = ANY(i.oem_numbers)`, but `@>` can use
+            // the GIN index IDX_inventory_items_oem; ANY cannot.
+            b.orWhere('i.oem_numbers @> ARRAY[:pnNormalized]::text[]', {
+              pnNormalized: normalized,
             });
           }
         }),

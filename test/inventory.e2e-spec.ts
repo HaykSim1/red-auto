@@ -326,4 +326,134 @@ describe('Shop inventory (e2e)', () => {
       .set(auth(buyerToken))
       .expect(404);
   });
+
+  describe('search, category filter, paging, photos', () => {
+    const tag = () =>
+      `t${Math.random().toString(36).slice(2, 8)}${Date.now() % 1000}`;
+    const digits = () => String(Math.floor(Math.random() * 1e8));
+
+    async function listIds(path: string, token = sellerToken) {
+      const res = await http().get(path).set(auth(token)).expect(200);
+      return (res.body as { items: { id: string }[] }).items.map((i) => i.id);
+    }
+    const shopIds = (query: string) => listIds(`/v1/inventory/items?${query}`);
+    const publicIds = (query: string) =>
+      listIds(`/v1/shops/${sellerId}/items?${query}`, buyerToken);
+
+    it('q matches the name', async () => {
+      const t = tag();
+      const item = await createItem({ name: `Brake pad ${t}` });
+      const other = await createItem();
+      const ids = await shopIds(`q=${t}`);
+      expect(ids).toContain(item.id);
+      expect(ids).not.toContain(other.id);
+    });
+
+    it('q matches name_en and name_hy text (shop list and public catalog)', async () => {
+      const en = tag();
+      const hy = tag();
+      const a = await createItem({ name: 'Колодки', name_en: `Pads ${en}` });
+      const b = await createItem({ name: 'Диск', name_hy: `Սկավառակ ${hy}` });
+      expect(await shopIds(`q=${en}`)).toEqual([a.id]);
+      expect(await publicIds(`q=${en}`)).toEqual([a.id]);
+      expect(await shopIds(`q=${encodeURIComponent(hy)}`)).toEqual([b.id]);
+    });
+
+    it('q matches a part number typed with spaces and dashes', async () => {
+      const n = digits();
+      const item = await createItem({ part_number: `ZX${n}-445 B` });
+      const q = encodeURIComponent(`zx ${n}-445-b`);
+      expect(await shopIds(`q=${q}`)).toEqual([item.id]);
+    });
+
+    it('q matches an OEM number exactly after normalization', async () => {
+      const n = digits();
+      const item = await createItem({ oem_numbers: [`OE${n}77`] });
+      const q = encodeURIComponent(`oe-${n} 77`);
+      expect(await shopIds(`q=${q}`)).toEqual([item.id]);
+      expect(await publicIds(`q=${q}`)).toEqual([item.id]);
+    });
+
+    it('q treats % as a literal, not a wildcard', async () => {
+      const t = tag();
+      const pct = await createItem({ name: `100% ${t}` });
+      const plain = await createItem({ name: `Plain ${t}` });
+      const ids = await shopIds(`q=${encodeURIComponent('%')}`);
+      expect(ids).toContain(pct.id);
+      expect(ids).not.toContain(plain.id);
+      const scoped = await shopIds(`q=${encodeURIComponent(`0% ${t}`)}`);
+      expect(scoped).toEqual([pct.id]);
+    });
+
+    it('category filters by group and by leaf', async () => {
+      const t = tag();
+      const pads = await createItem({
+        name: `Pads ${t}`,
+        category_key: 'brakes.pads',
+      });
+      const discs = await createItem({
+        name: `Discs ${t}`,
+        category_key: 'brakes.discs',
+      });
+      const belt = await createItem({
+        name: `Belt ${t}`,
+        category_key: 'engine.belts',
+      });
+      const group = await shopIds(`q=${t}&category=brakes`);
+      expect(group.sort()).toEqual([pads.id, discs.id].sort());
+      expect(group).not.toContain(belt.id);
+      expect(await shopIds(`q=${t}&category=brakes.pads`)).toEqual([pads.id]);
+      expect(await publicIds(`q=${t}&category=brakes`)).toHaveLength(2);
+    });
+
+    it('limit=1 pages across two pages without duplicates', async () => {
+      const t = tag();
+      const a = await createItem({ name: `Page ${t} a` });
+      const b = await createItem({ name: `Page ${t} b` });
+      const first = await http()
+        .get(`/v1/inventory/items?q=${t}&limit=1`)
+        .set(auth(sellerToken))
+        .expect(200);
+      const p1 = first.body as {
+        items: { id: string }[];
+        next_cursor: string | null;
+      };
+      expect(p1.items).toHaveLength(1);
+      expect(p1.next_cursor).toEqual(expect.any(String));
+      const second = await http()
+        .get(
+          `/v1/inventory/items?q=${t}&limit=1&cursor=${encodeURIComponent(p1.next_cursor!)}`,
+        )
+        .set(auth(sellerToken))
+        .expect(200);
+      const p2 = second.body as typeof p1;
+      expect(p2.items).toHaveLength(1);
+      expect(p2.next_cursor).toBeNull();
+      const all = [...p1.items, ...p2.items].map((i) => i.id);
+      expect(new Set(all).size).toBe(2);
+      expect(all.sort()).toEqual([a.id, b.id].sort());
+    });
+
+    it('PATCH photo_storage_keys replaces the photos', async () => {
+      const oldKey = `inventory/${sellerId}/${Date.now()}-old.png`;
+      const newKey = `inventory/${sellerId}/${Date.now()}-new.png`;
+      const item = await createItem({ photo_storage_keys: [oldKey] });
+      const res = await http()
+        .patch(`/v1/inventory/items/${item.id}`)
+        .set(auth(sellerToken))
+        .send({ photo_storage_keys: [newKey] })
+        .expect(200);
+      const keys = (body: unknown) =>
+        (body as { photos: { storage_key: string }[] }).photos.map(
+          (p) => p.storage_key,
+        );
+      expect(keys(res.body)).toEqual([newKey]);
+      const again = await http()
+        .get(`/v1/inventory/items/${item.id}`)
+        .set(auth(sellerToken))
+        .expect(200);
+      expect(keys(again.body)).toEqual([newKey]);
+      expect(keys(again.body)).not.toContain(oldKey);
+    });
+  });
 });

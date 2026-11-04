@@ -47,6 +47,7 @@ describe('InventoryService', () => {
   let saved: Partial<InventoryItem>[];
   let photoSaves: unknown[][];
   let itemsRepo: Record<string, jest.Mock>;
+  let recognitionsRepo: { findOne: jest.Mock };
 
   beforeEach(async () => {
     store = [];
@@ -69,6 +70,7 @@ describe('InventoryService', () => {
         ),
       ),
     };
+    recognitionsRepo = { findOne: jest.fn() };
     const photoRepo = {
       create: jest.fn((v: unknown) => v),
       save: jest.fn((v: unknown[]) => {
@@ -87,7 +89,7 @@ describe('InventoryService', () => {
         { provide: getRepositoryToken(InventoryItem), useValue: itemsRepo },
         {
           provide: getRepositoryToken(InventoryRecognition),
-          useValue: { findOne: jest.fn() },
+          useValue: recognitionsRepo,
         },
         {
           provide: DataSource,
@@ -173,5 +175,67 @@ describe('InventoryService', () => {
     await expect(service.get(SHOP, 'item-1')).rejects.toMatchObject({
       code: 'inventory_item_not_found',
     });
+  });
+
+  describe('AI flags from a recognition', () => {
+    const recognition = {
+      id: 'rec-1',
+      result: {
+        confidence: { brand: 0.9, part_number: 0.4 },
+        needs_review: ['part_number', 'fitments'],
+      },
+    };
+
+    it('create as draft from a recognition keeps confidence and needs_review', async () => {
+      recognitionsRepo.findOne.mockResolvedValue(recognition);
+      await service.create(SHOP, {
+        name: 'Brake pads',
+        status: 'draft',
+        recognition_id: '00000000-0000-4000-8000-000000000001',
+      });
+      expect(saved[0].status).toBe(InventoryItemStatus.DRAFT);
+      expect(saved[0].aiConfidence).toEqual({ brand: 0.9, part_number: 0.4 });
+      expect(saved[0].needsReview).toEqual(['part_number', 'fitments']);
+    });
+
+    it('create as active from a recognition clears needs_review', async () => {
+      recognitionsRepo.findOne.mockResolvedValue(recognition);
+      await service.create(SHOP, {
+        name: 'Brake pads',
+        recognition_id: '00000000-0000-4000-8000-000000000001',
+      });
+      expect(saved[0].status).toBe(InventoryItemStatus.ACTIVE);
+      expect(saved[0].aiConfidence).toEqual({ brand: 0.9, part_number: 0.4 });
+      expect(saved[0].needsReview).toEqual([]);
+    });
+
+    it('create from a recognition without a result stores no flags', async () => {
+      recognitionsRepo.findOne.mockResolvedValue({ id: 'rec-2', result: null });
+      await service.create(SHOP, {
+        name: 'x',
+        status: 'draft',
+        recognition_id: '00000000-0000-4000-8000-000000000002',
+      });
+      expect(saved[0].aiConfidence).toBeNull();
+      expect(saved[0].needsReview).toEqual([]);
+    });
+
+    it('update to active clears needs_review; a draft edit keeps it', async () => {
+      store.push(
+        makeItem({ status: InventoryItemStatus.DRAFT, needsReview: ['name'] }),
+      );
+      await service.update(SHOP, 'item-1', { note: 'n' });
+      expect(saved[0].needsReview).toEqual(['name']);
+      const dto = await service.update(SHOP, 'item-1', { status: 'active' });
+      expect(saved[1].status).toBe(InventoryItemStatus.ACTIVE);
+      expect(saved[1].needsReview).toEqual([]);
+      expect(dto.needs_review).toEqual([]);
+      expect(dto.ai_confidence).toEqual({ name: 0.9 });
+    });
+  });
+
+  it('create keeps a shop-typed barcode without a check digit (digits only, 8–14)', async () => {
+    await service.create(SHOP, { name: 'x', barcode: '12-345-678-90' });
+    expect(saved[0].barcode).toBe('1234567890');
   });
 });
