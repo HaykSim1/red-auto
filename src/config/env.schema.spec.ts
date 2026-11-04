@@ -47,3 +47,18 @@ describe('env.schema — SMS_PROVIDER=wings', () => {
     expect(env.SMS_WINGS_TTL).toBe(300);
   });
 });
+
+describe('env.schema — AI recognition', () => {
+  it('applies defaults', () => {
+    const env = validateEnv({ ...baseEnv });
+    expect(env.AI_RECOGNITION_MODEL).toBe('claude-opus-5-5');
+    expect(env.AI_RECOGNITION_DAILY_LIMIT).toBe(500);
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+  });
+
+  it('rejects a non-positive daily limit', () => {
+    expect(() =>
+      validateEnv({ ...baseEnv, AI_RECOGNITION_DAILY_LIMIT: '0' }),
+    ).toThrow();
+  });
+});

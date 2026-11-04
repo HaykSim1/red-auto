@@ -40,6 +40,10 @@ export const envSchema = z
     S3_ACCESS_KEY: z.string().optional(),
     S3_SECRET_KEY: z.string().optional(),
     S3_PUBLIC_URL: z.string().optional(),
+    /** AI part recognition (server-only; missing key -> 503 ai_unconfigured). */
+    ANTHROPIC_API_KEY: z.string().optional(),
+    AI_RECOGNITION_MODEL: z.string().default('claude-opus-5-5'),
+    AI_RECOGNITION_DAILY_LIMIT: z.coerce.number().int().positive().default(500),
     /** Expo push (optional). */
     EXPO_ACCESS_TOKEN: z.string().optional(),
     /** `dev` (log only), `twilio`, `http` webhook, or `wings` broker — see docs/decisions.md D-011. */
