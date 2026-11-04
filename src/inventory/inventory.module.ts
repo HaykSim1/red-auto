@@ -7,6 +7,8 @@ import {
   User,
 } from '../database/entities';
 import { InventoryCategoriesController } from './inventory-categories.controller';
+import { InventoryController } from './inventory.controller';
+import { InventoryService } from './inventory.service';
 
 @Module({
   imports: [
@@ -17,8 +19,8 @@ import { InventoryCategoriesController } from './inventory-categories.controller
       User,
     ]),
   ],
-  controllers: [InventoryCategoriesController],
-  providers: [],
-  exports: [],
+  controllers: [InventoryCategoriesController, InventoryController],
+  providers: [InventoryService],
+  exports: [InventoryService],
 })
 export class InventoryModule {}

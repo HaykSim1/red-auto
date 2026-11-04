@@ -1030,3 +1030,117 @@ export class PartCategoryDto {
 export class PartCategoryGroupDto extends PartCategoryDto {
   @ApiProperty({ type: [PartCategoryDto] }) children: PartCategoryDto[];
 }
+
+export class InventoryFitmentDto {
+  @ApiProperty() make: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) model: string | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) year_from:
+    | number
+    | null;
+  @ApiPropertyOptional({ type: Number, nullable: true }) year_to: number | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) engine: string | null;
+}
+
+export class InventoryItemPhotoDto {
+  @ApiProperty() storage_key: string;
+  @ApiProperty() sort_order: number;
+}
+
+export class InventoryItemDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ enum: ['draft', 'active', 'archived'] })
+  status: 'draft' | 'active' | 'archived';
+  @ApiPropertyOptional({ type: String, nullable: true }) brand: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) part_number:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  part_number_normalized: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) barcode: string | null;
+  @ApiProperty({ type: [String] }) oem_numbers: string[];
+  @ApiProperty() name: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_hy: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_en: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) category_key:
+    | string
+    | null;
+  @ApiProperty({ type: [InventoryFitmentDto] })
+  fitments: InventoryFitmentDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) fitment_note:
+    | string
+    | null;
+  @ApiProperty({ enum: ['new', 'used'] }) condition: 'new' | 'used';
+  @ApiPropertyOptional({ type: Number, nullable: true }) price_amount:
+    | number
+    | null;
+  @ApiProperty() price_currency: string;
+  @ApiProperty() quantity: number;
+  @ApiPropertyOptional({ type: String, nullable: true }) shelf_location:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) note: string | null;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+    nullable: true,
+  })
+  ai_confidence: Record<string, number> | null;
+  @ApiProperty({ type: [String] }) needs_review: string[];
+  @ApiPropertyOptional({ type: String, nullable: true }) recognition_id:
+    | string
+    | null;
+  @ApiProperty({ type: [InventoryItemPhotoDto] })
+  photos: InventoryItemPhotoDto[];
+  @ApiProperty() created_at: string;
+  @ApiProperty() updated_at: string;
+}
+
+export class InventoryItemListResponseDto {
+  @ApiProperty({ type: [InventoryItemDto] }) items: InventoryItemDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) next_cursor:
+    | string
+    | null;
+}
+
+export class InventoryStatsDto {
+  @ApiProperty() active: number;
+  @ApiProperty() drafts: number;
+  @ApiProperty() out_of_stock: number;
+}
+
+export class ShopCatalogItemDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_hy: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_en: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) brand: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) part_number:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) barcode: string | null;
+  @ApiProperty({ type: [String] }) oem_numbers: string[];
+  @ApiPropertyOptional({ type: String, nullable: true }) category_key:
+    | string
+    | null;
+  @ApiProperty({ type: [InventoryFitmentDto] })
+  fitments: InventoryFitmentDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) fitment_note:
+    | string
+    | null;
+  @ApiProperty({ enum: ['new', 'used'] }) condition: 'new' | 'used';
+  @ApiPropertyOptional({ type: Number, nullable: true }) price_amount:
+    | number
+    | null;
+  @ApiProperty() price_currency: string;
+  @ApiProperty() in_stock: boolean;
+  @ApiProperty({ type: [InventoryItemPhotoDto] })
+  photos: InventoryItemPhotoDto[];
+  @ApiProperty() created_at: string;
+}
+
+export class ShopCatalogListResponseDto {
+  @ApiProperty({ type: [ShopCatalogItemDto] }) items: ShopCatalogItemDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) next_cursor:
+    | string
+    | null;
+}
