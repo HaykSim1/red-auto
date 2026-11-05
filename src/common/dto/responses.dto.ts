@@ -1024,13 +1024,15 @@ export class CategoryLabelsDto {
   @ApiProperty() en: string;
 }
 
-export class PartCategoryDto {
-  @ApiProperty() key: string;
+export class PartCategoryNodeDto {
+  @ApiProperty({ example: 'car_parts.braking_systems.brake_pads_and_shoes' })
+  key: string;
   @ApiProperty({ type: CategoryLabelsDto }) labels: CategoryLabelsDto;
-}
-
-export class PartCategoryGroupDto extends PartCategoryDto {
-  @ApiProperty({ type: [PartCategoryDto] }) children: PartCategoryDto[];
+  @ApiProperty({
+    type: () => [PartCategoryNodeDto],
+    description: 'Empty for a leaf (the only keys an item may carry).',
+  })
+  children: PartCategoryNodeDto[];
 }
 
 export class InventoryFitmentDto {

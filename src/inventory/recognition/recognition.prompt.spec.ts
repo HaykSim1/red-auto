@@ -3,7 +3,7 @@ import { buildSystemPrompt, buildUserText } from './recognition.prompt';
 describe('recognition prompt', () => {
   it('system prompt lists categories, brands and the no-invention rule', () => {
     const prompt = buildSystemPrompt();
-    expect(prompt).toContain('brakes.pads');
+    expect(prompt).toContain('car_parts.braking_systems.brake_pads_and_shoes');
     expect(prompt).toContain('Toyota');
     expect(prompt).toContain('never invent');
   });

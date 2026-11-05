@@ -9,7 +9,7 @@ const VALID: RecognitionResult = {
   name: 'Тормозные колодки',
   name_en: 'Brake pads',
   name_hy: null,
-  category_key: 'brakes.pads',
+  category_key: 'car_parts.braking_systems.brake_pads_and_shoes',
   oem_numbers: [],
   fitments: [],
   fitment_note: null,

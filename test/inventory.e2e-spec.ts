@@ -39,7 +39,7 @@ const RECOGNITION_RESULT = {
   name: 'Brake pads front',
   name_en: 'Brake pads front',
   name_hy: null,
-  category_key: 'brakes.pads',
+  category_key: 'car_parts.braking_systems.brake_pads_and_shoes',
   oem_numbers: [],
   fitments: [],
   fitment_note: null,
@@ -303,7 +303,7 @@ describe('Shop inventory (e2e)', () => {
     expect(body.result).toMatchObject({
       brand: 'Bosch',
       name: 'Brake pads front',
-      category_key: 'brakes.pads',
+      category_key: 'car_parts.braking_systems.brake_pads_and_shoes',
     });
   });
 
@@ -325,6 +325,41 @@ describe('Shop inventory (e2e)', () => {
       .get(`/v1/shops/${buyer.id}/items`)
       .set(auth(buyerToken))
       .expect(404);
+  });
+
+  it('GET /inventory/categories returns the three-level tree', async () => {
+    const res = await http().get('/v1/inventory/categories').expect(200);
+    type Node = {
+      key: string;
+      labels: Record<string, string>;
+      children: Node[];
+    };
+    const sections = res.body as Node[];
+    expect(sections).toHaveLength(9);
+    const carParts = sections.find((s) => s.key === 'car_parts');
+    const braking = carParts?.children.find(
+      (g) => g.key === 'car_parts.braking_systems',
+    );
+    const pads = braking?.children.find(
+      (l) => l.key === 'car_parts.braking_systems.brake_pads_and_shoes',
+    );
+    expect(pads?.labels).toEqual({
+      hy: 'Արգելակման կոճղակներ',
+      ru: 'Тормозные колодки',
+      en: 'Brake Pads and Shoes',
+    });
+    expect(pads?.children).toEqual([]);
+    const batteries = sections.find((s) => s.key === 'car_batteries');
+    expect(batteries?.children).toEqual([]);
+  });
+
+  it('item create rejects a non-leaf category key', async () => {
+    const res = await http()
+      .post('/v1/inventory/items')
+      .set(auth(sellerToken))
+      .send({ name: 'Bad category', category_key: 'car_parts.braking_systems' })
+      .expect(400);
+    expect((res.body as { code: string }).code).toBe('category_unknown');
   });
 
   describe('search, category filter, paging, photos', () => {
@@ -385,25 +420,39 @@ describe('Shop inventory (e2e)', () => {
       expect(scoped).toEqual([pct.id]);
     });
 
-    it('category filters by group and by leaf', async () => {
+    it('category filters by section, group (prefix) and leaf (equality)', async () => {
       const t = tag();
       const pads = await createItem({
         name: `Pads ${t}`,
-        category_key: 'brakes.pads',
+        category_key: 'car_parts.braking_systems.brake_pads_and_shoes',
       });
       const discs = await createItem({
         name: `Discs ${t}`,
-        category_key: 'brakes.discs',
+        category_key: 'car_parts.braking_systems.brake_discs_and_drums',
       });
       const belt = await createItem({
         name: `Belt ${t}`,
-        category_key: 'engine.belts',
+        category_key: 'car_parts.engine_parts.belts_chains_and_tensioners',
       });
-      const group = await shopIds(`q=${t}&category=brakes`);
+      const battery = await createItem({
+        name: `Battery ${t}`,
+        category_key: 'car_batteries',
+      });
+      const section = await shopIds(`q=${t}&category=car_parts`);
+      expect(section.sort()).toEqual([pads.id, discs.id, belt.id].sort());
+      const group = await shopIds(`q=${t}&category=car_parts.braking_systems`);
       expect(group.sort()).toEqual([pads.id, discs.id].sort());
-      expect(group).not.toContain(belt.id);
-      expect(await shopIds(`q=${t}&category=brakes.pads`)).toEqual([pads.id]);
-      expect(await publicIds(`q=${t}&category=brakes`)).toHaveLength(2);
+      expect(
+        await shopIds(
+          `q=${t}&category=car_parts.braking_systems.brake_pads_and_shoes`,
+        ),
+      ).toEqual([pads.id]);
+      expect(await shopIds(`q=${t}&category=car_batteries`)).toEqual([
+        battery.id,
+      ]);
+      expect(
+        await publicIds(`q=${t}&category=car_parts.braking_systems`),
+      ).toHaveLength(2);
     });
 
     it('limit=1 pages across two pages without duplicates', async () => {

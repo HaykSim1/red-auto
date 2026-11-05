@@ -31,7 +31,7 @@ export function buildSystemPrompt(): string {
       '. Otherwise use the make as commonly written.',
     'Put engine codes or volumes in `engine`, years in year_from / year_to (null when unknown), and anything that does not fit these fields (axle, side, VIN range) in fitment_note.',
     '',
-    `Category: category_key must be exactly one of the keys below; pick the closest, or ${OTHER_CATEGORY_KEY} if none fits.`,
+    `Category: category_key must be exactly one of the leaf keys below (path in English, then Russian); use the closest leaf, or ${OTHER_CATEGORY_KEY} when nothing fits.`,
     ...categoryPromptLines(),
     '',
     'condition: "new" unless the photos clearly show a used part.',

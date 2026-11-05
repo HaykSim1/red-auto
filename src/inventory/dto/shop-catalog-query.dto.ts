@@ -11,7 +11,10 @@ export class ShopCatalogQueryDto extends PaginationQueryDto {
   @MaxLength(120)
   q?: string;
 
-  @ApiPropertyOptional({ description: 'Leaf category key or group key.' })
+  @ApiPropertyOptional({
+    description:
+      'Leaf key (exact match) or section/group key (matches its whole subtree).',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)

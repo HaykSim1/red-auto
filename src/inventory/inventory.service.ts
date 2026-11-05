@@ -441,7 +441,8 @@ export class InventoryService {
 
     const category = q.category?.trim();
     if (category) {
-      if (category.includes('.')) {
+      // A leaf matches exactly; a section or group matches its subtree.
+      if (isKnownCategoryKey(category)) {
         qb.andWhere('i.category_key = :cat', { cat: category });
       } else {
         qb.andWhere('i.category_key LIKE :catp', {

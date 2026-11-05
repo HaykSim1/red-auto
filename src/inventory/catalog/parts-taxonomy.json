@@ -1,0 +1,1551 @@
+{
+  "name": {
+    "en": "Parts and Accessories",
+    "ru": "Запчасти и аксессуары",
+    "am": "Պահեստամասեր և աքսեսուարներ"
+  },
+  "children": [
+    {
+      "name": {
+        "en": "Car Parts",
+        "ru": "Автозапчасти",
+        "am": "Ավտոպահեստամասեր"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Body Parts",
+            "ru": "Детали кузова",
+            "am": "Թափքի մասեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Bumpers",
+                "ru": "Бамперы",
+                "am": "Թափարգելներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Brackets and Mounts",
+                "ru": "Кронштейны и крепления",
+                "am": "Կցամասեր և ամրակներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Hoods",
+                "ru": "Капоты",
+                "am": "Կապոտներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Radiator Grilles",
+                "ru": "Решётки радиатора",
+                "am": "Ռադիատորի ցանցեր"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Fenders and Wheel Arches",
+                "ru": "Крылья и арки",
+                "am": "Անվաթևեր"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Doors",
+                "ru": "Двери",
+                "am": "Դռներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Splash Shields and Liners",
+                "ru": "Защита кузова и подкрылки",
+                "am": "Պաշտպանիչներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Mirrors",
+                "ru": "Зеркала",
+                "am": "Հայելիներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Tailgates and Trunk Lids",
+                "ru": "Багажник",
+                "am": "Բեռնախցիկ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Moldings and Trims",
+                "ru": "Молдинги и накладки",
+                "am": "Մոլդինգներ և վրադիրներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Body Reinforcements and Pillars",
+                "ru": "Усилители кузова и стойки",
+                "am": "Թափքի ուժեղացուցիչներ և հենասյուներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Sills, Running Boards and Roof",
+                "ru": "Пороги, подножки и крыша",
+                "am": "Շեմեր, հենակներ և տանիք"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Body Kits",
+                "ru": "Комплект кузова",
+                "am": "Թափքի հավաքածուներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Everything Else",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Chassis",
+            "ru": "Ходовая часть",
+            "am": "Ընթացային մաս"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Shock Absorbers and Struts",
+                "ru": "Амортизаторы и стойки",
+                "am": "Ամորտիզատորներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Springs",
+                "ru": "Пружины",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Control Arms and Ball Joints",
+                "ru": "Рычаги и шаровые опоры",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Wheel Bearings and Hubs",
+                "ru": "Подшипники и ступицы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Silent Blocks and Bushings",
+                "ru": "Сайлентблоки и втулки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Stabilizer Bars and Links",
+                "ru": "Стабилизаторы и стойки стабилизатора",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Subframes and Beams",
+                "ru": "Подрамники и балки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "CV Joints and Driveshafts",
+                "ru": "Шрусы и приводные валы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Differentials and Axles",
+                "ru": "Редукторы и мосты",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Lighting and Optics",
+            "ru": "Освещение и оптика",
+            "am": "Լուսավորում և օպտիկա"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Headlights",
+                "ru": "Передние фары",
+                "am": "Առջևի լուսարձակներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Tail Lights",
+                "ru": "Задние фонари",
+                "am": "Հետևի լուսարձակներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Fog Lights",
+                "ru": "Противотуманные фары",
+                "am": "Հակամառախուղային լուսարձակներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Reflectors",
+                "ru": "Светоотражатели",
+                "am": "Անդրադարձիչներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Turn Signal Lights",
+                "ru": "Указатели поворота",
+                "am": "Շրջադարձի թարթիչներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Lamp Modules",
+                "ru": "Блоки фар",
+                "am": "Լուսարձակի բլոկներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Bulbs",
+                "ru": "Лампы",
+                "am": "Լամպեր"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Engine Parts",
+            "ru": "Детали двигателя",
+            "am": "Շարժիչի մասեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Engine and Gearbox Mounts",
+                "ru": "Подушки двигателя и КПП",
+                "am": "Շարժիչի և փոխանցման տուփի բարձիկներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Complete Engines and Blocks",
+                "ru": "Двигатели в сборе и блоки",
+                "am": "Ամբողջական շարժիչներ և բլոկներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Gaskets, Bearing Shells and Seals",
+                "ru": "Прокладки, вкладыши и сальники",
+                "am": "Ներդիրներ և սալնիկներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Air Intake and Throttle Bodies",
+                "ru": "Впуск воздуха и дроссельные заслонки",
+                "am": "Օդամատակարարում և դրոսելային փականներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Belts, Chains and Tensioners",
+                "ru": "Ремни, цепи и натяжители",
+                "am": "Փոկեր, շղթաներ և ձգիչներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Oil System",
+                "ru": "Система смазки",
+                "am": "Յուղման համակարգ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Cylinder Heads and Valvetrain",
+                "ru": "Головки блока и клапанный механизм",
+                "am": "Շարժիչի գլխիկներ և կլապանային մեխանիզմ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Shafts, Pistons and Connecting Rods",
+                "ru": "Валы, поршни и шатуны",
+                "am": "Լիսեռներ, մխոցներ և շատուններ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Everything Else",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Turbochargers and Intercoolers",
+                "ru": "Турбокомпрессоры и интеркулеры",
+                "am": "Տուրբոմղիչներ և ինտերկուլերներ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Cooling and Heating Systems",
+            "ru": "Системы охлаждения и обогрева",
+            "am": "Հովացման և տաքացման համակարգեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Radiators",
+                "ru": "Радиаторы",
+                "am": "Ռադիատորներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Cooling Fans and Shrouds",
+                "ru": "Вентиляторы и диффузоры",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Water Pumps",
+                "ru": "Водяные насосы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Thermostats",
+                "ru": "Термостаты",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Hoses and Pipes",
+                "ru": "Патрубки и шланги",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Expansion Tanks and Caps",
+                "ru": "Расширительные бачки и крышки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Heater Cores and Blowers",
+                "ru": "Радиаторы печки и моторчики",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "A/C Compressors and Condensers",
+                "ru": "Компрессоры и конденсаторы кондиционера",
+                "am": "Կոմպրեսորներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Electrical Systems",
+            "ru": "Электрика",
+            "am": "Էլեկտրական համակարգեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Alternators",
+                "ru": "Генераторы",
+                "am": "Գեներատորներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Starters",
+                "ru": "Стартеры",
+                "am": "Ստարտերներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Control Units and ECUs",
+                "ru": "Блоки управления",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Wiring and Connectors",
+                "ru": "Провода и разъемы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Switches and Buttons",
+                "ru": "Переключатели и кнопки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Sensors",
+                "ru": "Датчики",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Ignition Coils and Spark Plugs",
+                "ru": "Катушки зажигания и свечи",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Window and Seat Motors",
+                "ru": "Моторчики стекол и сидений",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Fuses and Relays",
+                "ru": "Предохранители и реле",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Braking Systems",
+            "ru": "Тормозные системы",
+            "am": "Արգելակման համակարգեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Brake Pads and Shoes",
+                "ru": "Тормозные колодки",
+                "am": "Արգելակման կոճղակներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Brake Discs and Drums",
+                "ru": "Тормозные диски и барабаны",
+                "am": "Արգելակման սկավառակներ և թմբուկներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "ABS and Brake Sensors",
+                "ru": "ABS и датчики тормозной системы",
+                "am": "ABS և արգելակման սենսորներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Calipers and Caliper Parts",
+                "ru": "Суппорты и комплектующие",
+                "am": "Սուպորտներ և դրանց մասեր"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Brake Cylinders and Boosters",
+                "ru": "Тормозные цилиндры и вакуумные усилители",
+                "am": "Արգելակման ցիլինդրներ և ուժեղացուցիչներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Brake Hoses and Lines",
+                "ru": "Тормозные шланги и трубки",
+                "am": "Արգելակման խողովակներ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Parking Brake",
+                "ru": "Стояночный тормоз",
+                "am": "Ձեռքի արգելակ"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Everything Else",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Steering Systems",
+            "ru": "Рулевое управление",
+            "am": "Ղեկի կառավարում"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Steering Racks and Gearboxes",
+                "ru": "Рулевые рейки и редукторы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Power Steering Pumps",
+                "ru": "Насосы гидроусилителя",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Tie Rods and Ends",
+                "ru": "Рулевые тяги и наконечники",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Steering Columns",
+                "ru": "Рулевые колонки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Steering Wheels",
+                "ru": "Рулевые колеса",
+                "am": "Ղեկեր"
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Hoses and Reservoirs",
+                "ru": "Шланги и бачки ГУР",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Transmission",
+            "ru": "Коробка передач",
+            "am": "Փոխանցման տուփ"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Automatic Transmissions",
+                "ru": "АКПП в сборе",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Manual Transmissions",
+                "ru": "МКПП в сборе",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Clutch Kits and Parts",
+                "ru": "Сцепление и комплектующие",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Torque Converters",
+                "ru": "Гидротрансформаторы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Valve Bodies and Solenoids",
+                "ru": "Гидроблоки и соленоиды",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Transfer Cases",
+                "ru": "Раздаточные коробки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Shift Mechanisms and Cables",
+                "ru": "Механизмы и тросы переключения",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Seals and Gaskets",
+                "ru": "Сальники и прокладки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Car Interior",
+            "ru": "Детали салона",
+            "am": "Ավտոսրահի մասեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Dashboards and Panels",
+                "ru": "Торпедо и панели",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Seats and Parts",
+                "ru": "Сиденья и комплектующие",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Door Cards and Trim",
+                "ru": "Обшивки дверей и накладки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Consoles and Armrests",
+                "ru": "Консоли и подлокотники",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Handles and Buttons",
+                "ru": "Ручки и кнопки салона",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Headliners and Carpets",
+                "ru": "Потолок и напольные покрытия",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Pedals and Pads",
+                "ru": "Педали и накладки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Everything Else",
+            "ru": "Все остальное",
+            "am": "Այլ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Car Glass",
+            "ru": "Стекла",
+            "am": "Ապակիներ"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Windshields",
+                "ru": "Лобовые стекла",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Rear Windows",
+                "ru": "Заднее стекло",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Side and Door Glass",
+                "ru": "Боковые стекла",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Sunroof Glass",
+                "ru": "Стекла люка",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Mirror Glass",
+                "ru": "Стекла зеркал",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Seals and Moldings",
+                "ru": "Уплотнители и молдинги стекол",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Fuel Systems",
+            "ru": "Топливные системы",
+            "am": "Վառելիքային համակարգեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Fuel Pumps",
+                "ru": "Топливные насосы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Injectors and Rails",
+                "ru": "Форсунки и рампы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Fuel Tanks and Caps",
+                "ru": "Бензобаки и крышки",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Carburetors",
+                "ru": "Карбюраторы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "High Pressure Pumps",
+                "ru": "ТНВД",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Fuel Lines and Hoses",
+                "ru": "Топливные трубки и шланги",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Safety",
+            "ru": "Безопасность",
+            "am": "Անվտանգություն"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Airbags",
+                "ru": "Подушки безопасности",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Airbag Control Units",
+                "ru": "Блоки SRS",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Seat Belts and Pretensioners",
+                "ru": "Ремни и пиропатроны",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Crash Sensors",
+                "ru": "Датчики удара",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "ESP and ABS Modules",
+                "ru": "Блоки ESP и ABS",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": {
+            "en": "Exhaust Systems",
+            "ru": "Выхлопные системы",
+            "am": "Արտանետման համակարգեր"
+          },
+          "children": [
+            {
+              "name": {
+                "en": "Mufflers and Resonators",
+                "ru": "Глушители и резонаторы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Catalytic Converters",
+                "ru": "Катализаторы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Particulate Filters",
+                "ru": "Сажевые фильтры",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Exhaust Manifolds",
+                "ru": "Выпускные коллекторы",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Pipes and Clamps",
+                "ru": "Трубы и хомуты",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Lambda Sensors",
+                "ru": "Лямбда-зонды",
+                "am": ""
+              },
+              "children": []
+            },
+            {
+              "name": {
+                "en": "Other",
+                "ru": "Прочее",
+                "am": "Այլ"
+              },
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Wheels and Tires",
+        "ru": "Колеса и шины",
+        "am": "Անիվներ և անվադողեր"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Tires",
+            "ru": "Шины",
+            "am": "Անվադողեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Complete wheels",
+            "ru": "Колеса в сборе",
+            "am": "Անիվներ անվահեծերով"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Car Accessories",
+        "ru": "Автоаксессуары",
+        "am": "Ավտոաքսեսուարներ"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Miscellaneous for the Exterior",
+            "ru": "Разное для экстерьера",
+            "am": "Մեքենայի էքստերիերի իրեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Mats",
+            "ru": "Коврики",
+            "am": "Մեքենայի գորգիկներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Miscellaneous for the Interior",
+            "ru": "Разное для интерьера",
+            "am": "Մեքենայի ինտերիերի իրեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Car Keys",
+            "ru": "Автомобильные ключи",
+            "am": "Մեքենայի բանալիներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Chargers and Cables",
+            "ru": "Зарядки и кабеля",
+            "am": "Լիցքավորիչ և մալուխ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Deflectors and Shields",
+            "ru": "Дефлекторы и ветровики",
+            "am": "Անձրևապաշտպանիչ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Windshield Wipers",
+            "ru": "Дворники",
+            "am": "Դիմապակու խոզանակ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Pumps and Compressors",
+            "ru": "Насосы и компрессоры",
+            "am": "Պոմպեր և կոմպրեսորներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Wheel Jacks",
+            "ru": "Домкраты",
+            "am": "Վերհան կամ ամբարձիչ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Seat Covers",
+            "ru": "Чехлы для сидений",
+            "am": "Նստատեղի ծածկոց"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Keychains and Paraphernalia",
+            "ru": "Брелки и атрибутика",
+            "am": "Բրելոկ կամ կախազարդ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Tool Kits",
+            "ru": "Наборы инструментов",
+            "am": "Գործիքների հավաքածու"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Canisters",
+            "ru": "Канистры",
+            "am": "Տարաներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Steering Wheel Covers",
+            "ru": "Чехлы на руль",
+            "am": "Ղեկի պատյան"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Car Covers",
+            "ru": "Тенты",
+            "am": "Մեքենայի վրան"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Rims and Hub Caps",
+        "ru": "Диски и колпаки",
+        "am": "Անվահեծեր և անվադողի թասակներ"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Rims",
+            "ru": "Диски",
+            "am": "Անվահեծեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Hub Caps",
+            "ru": "Колпаки",
+            "am": "Անվադողի թասակներ"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Car Audio",
+        "ru": "Автозвук",
+        "am": "Մեքենայի աուդիո"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Car Audio System",
+            "ru": "Автомобильная аудиосистема",
+            "am": "Ավտոմեքենայի աուդիոհամակարգ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Amplifiers & Subwoofers",
+            "ru": "Усилители и сабвуферы",
+            "am": "Ձայնի ուժեղարար և սաբվուֆեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Car Acoustics and Speakers",
+            "ru": "Автоакустика и динамики",
+            "am": "Ավտոմեքենայի ակուստիկա և բարձրախոսներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Everything Else",
+            "ru": "Все остальное",
+            "am": "Այլ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "FM Transmitters",
+            "ru": "FM трансмиттеры",
+            "am": "FM հաղորդիչներ"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Oils and Chemicals",
+        "ru": "Масла и автохимия",
+        "am": "Յուղեր և ավտոքիմիա"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Engine Oils",
+            "ru": "Моторные масла",
+            "am": "Շարժիչի յուղ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Antifreeze and Cooling Liquids",
+            "ru": "Антифризы и тосолы",
+            "am": "Հակասառեցուցիչ հեղուկ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Lubricants",
+            "ru": "Смазки",
+            "am": "Քսանյութեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Everything Else",
+            "ru": "Все остальное",
+            "am": "Այլ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Hydraulic Oils and Fluids",
+            "ru": "Гидравлические масла и жидкости",
+            "am": "Հիդրավլիկ սարքավորումների յուղեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Car Paints and Coats",
+            "ru": "Автоэмали, краски и лаки",
+            "am": "Մեքենայի ներկեր, լաքեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Car Shampoos",
+            "ru": "Автошампуни",
+            "am": "Մեքենայի շամպուններ"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Car Electronics",
+        "ru": "Автоэлектроника",
+        "am": "Ավտոէլեկտրոնիկա"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Dash Mounted Cameras",
+            "ru": "Видеорегистраторы",
+            "am": "Վիդեո"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Everything Else",
+            "ru": "Все остальное",
+            "am": "Այլ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Alarm and Anti-theft Devices",
+            "ru": "Сигнализация и противоугонные устройства",
+            "am": "Հակաառևանգման համակարգեր"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Rear View Cameras",
+            "ru": "Камеры заднего вида",
+            "am": "Ետևի տեսախցիկ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Parking Sensors",
+            "ru": "Парковочные устройства",
+            "am": "Կայանման սարքավորում"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Radar Detectors",
+            "ru": "Радар-детекторы",
+            "am": "Ռադար դետեկտորներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "GPS Navigators",
+            "ru": "GPS навигаторы",
+            "am": "GPS նավիգատորներ"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "Car Batteries",
+        "ru": "Автомобильные аккумуляторы",
+        "am": "Մարտկոցներ"
+      },
+      "children": []
+    },
+    {
+      "name": {
+        "en": "Gas Equipment",
+        "ru": "Газобаллонное оборудование",
+        "am": "Գազի սարքավորումներ"
+      },
+      "children": [
+        {
+          "name": {
+            "en": "Gas Cylinders",
+            "ru": "Газовые балонны",
+            "am": "Գազի բալոններ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Gas Equipment Kits",
+            "ru": "Комплекты газобалонного оборудования",
+            "am": "Գազաբալոնային սարքավորումների հավաքածուներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Control Modules",
+            "ru": "Блоки управления",
+            "am": "Էլեկտրոնային կառավարման համակարգիչներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Gas Filters",
+            "ru": "Газовые фильтры",
+            "am": "Գազի զտիչներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Pressure Sensors",
+            "ru": "Датчики давления",
+            "am": "Գազի ճնշման ցուցիչներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Gas Equipment Valves",
+            "ru": "Клапаны газобалонного оборудования",
+            "am": "Գազաբալոնային համակարգերի փականներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Fuel Selector Switches",
+            "ru": "Переключатели вида топлива",
+            "am": "Վառելիքի փոփոխման անջատիչ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Thermal sensors",
+            "ru": "Термодатчики",
+            "am": "Գազի ջերմաստիճանը կառավարող ցուցիչներ"
+          },
+          "children": []
+        },
+        {
+          "name": {
+            "en": "Tubes and Hoses",
+            "ru": "Трубки и шланги",
+            "am": "Կոշտ և ռետինե խողովակներ"
+          },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

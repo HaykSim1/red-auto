@@ -31,7 +31,7 @@ function parsed(over: Partial<RecognitionResult> = {}): RecognitionResult {
     name: 'Тормозные колодки',
     name_en: 'Brake pads',
     name_hy: 'Արգելակային կոճղակներ',
-    category_key: 'brakes.pads',
+    category_key: 'car_parts.braking_systems.brake_pads_and_shoes',
     oem_numbers: ['04465-02220', '0446502220', ' 04465 33450 '],
     fitments: [
       {
@@ -319,7 +319,7 @@ describe('RecognitionService', () => {
       barcode: '4047024063303',
       oem_numbers: ['0446502220', '0446533450'],
       fitments: [{ make: 'Toyota', model: 'Corolla' }],
-      category_key: 'brakes.pads',
+      category_key: 'car_parts.braking_systems.brake_pads_and_shoes',
       confidence: {
         brand: 1,
         part_number: 0.9,
@@ -363,11 +363,11 @@ describe('RecognitionService', () => {
     expect(r3.result?.barcode).toBe('4047024063303');
   });
 
-  it('process maps an unknown category to other.other and flags it', async () => {
+  it('process maps an unknown category to OTHER_CATEGORY_KEY and flags it', async () => {
     client.recognize.mockResolvedValueOnce(
       call({
         parsed: parsed({
-          category_key: 'brakes.unicorns',
+          category_key: 'car_parts.braking_systems.unicorns',
           needs_review: ['fitments'],
         }),
       }),
@@ -375,7 +375,7 @@ describe('RecognitionService', () => {
     const r = row();
     await process(r.id);
     expect(r.status).toBe(InventoryRecognitionStatus.DONE);
-    expect(r.result?.category_key).toBe('other.other');
+    expect(r.result?.category_key).toBe('car_parts.everything_else');
     expect(r.result?.needs_review).toEqual(['fitments', 'category_key']);
   });
 
