@@ -30,7 +30,11 @@ import { assertInventoryKeys } from '../storage-keys';
 import { S3ObjectReader } from './object-reader';
 import { RECOGNITION_CLIENT } from './recognition-client';
 import type { RecognitionClient } from './recognition-client';
-import { RecognitionFitment, RecognitionResult } from './recognition.schema';
+import {
+  RecognitionFitment,
+  RecognitionResult,
+  StoredRecognitionResult,
+} from './recognition.schema';
 
 const MAX_CONCURRENT = 3;
 const MAX_PHOTOS = 3;
@@ -283,6 +287,11 @@ export class RecognitionService implements OnModuleInit {
           code: 'ai_parse_failed',
           message: `No valid structured output (stop_reason: ${call.stopReason}).`,
         };
+      } else if (!call.parsed.is_part) {
+        failure = {
+          code: 'no_part_detected',
+          message: 'The photos show no automotive part, box or label.',
+        };
       }
       if (failure) {
         await this.fail(id, startedAt, failure, usage);
@@ -329,9 +338,12 @@ export class RecognitionService implements OnModuleInit {
   }
 
   private postProcess(
-    parsed: RecognitionResult,
+    model: RecognitionResult,
     barcodeHint: string | null,
-  ): RecognitionResult {
+  ): StoredRecognitionResult {
+    // `is_part` gated the run; it is not part of the stored result.
+    const { is_part, ...parsed } = model;
+    void is_part;
     const needsReview = new Set(parsed.needs_review);
     const confidence = {
       brand: clamp01(parsed.confidence.brand),

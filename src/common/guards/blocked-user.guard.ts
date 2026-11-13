@@ -36,10 +36,18 @@ export class BlockedUserGuard implements CanActivate {
       select: { id: true, blockedAt: true, deletedAt: true },
     });
     if (user?.blockedAt) {
-      throw new ApiException('user_blocked', 'User is blocked.', HttpStatus.FORBIDDEN);
+      throw new ApiException(
+        'user_blocked',
+        'User is blocked.',
+        HttpStatus.FORBIDDEN,
+      );
     }
     if (user?.deletedAt) {
-      throw new ApiException('account_deleted', 'Account has been deleted.', HttpStatus.UNAUTHORIZED);
+      throw new ApiException(
+        'account_deleted',
+        'Account has been deleted.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
     return true;
   }

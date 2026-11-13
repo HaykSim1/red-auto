@@ -24,9 +24,12 @@ export class TasksService {
           AND created_at < $3`,
       [PartRequestStatus.CLOSED, PartRequestStatus.OPEN, cutoff],
     );
-    const affected: number = (result as unknown as { rowCount: number }).rowCount ?? 0;
+    const affected: number =
+      (result as unknown as { rowCount: number }).rowCount ?? 0;
     if (affected > 0) {
-      this.logger.log(`Auto-closed ${affected} stale request(s) older than ${STALE_DAYS} days.`);
+      this.logger.log(
+        `Auto-closed ${affected} stale request(s) older than ${STALE_DAYS} days.`,
+      );
     }
   }
 }

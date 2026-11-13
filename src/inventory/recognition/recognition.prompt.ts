@@ -16,6 +16,8 @@ export function buildSystemPrompt(): string {
     'You identify automotive spare parts for a parts shop in Armenia from photos of the part, its box or its label.',
     'Fill every field of the output schema for the ONE product shown. If the photos show several different products, describe the first one and list the others in notes_for_seller.',
     '',
+    'is_part: true when the photos show an automotive part, its box or its label. If they show something else entirely (a person, a room, a random object, a blank or unreadable image), set is_part to false, name to "-" and leave the other fields empty or null; the result is then discarded, so do not guess a part.',
+    '',
     'Names: output `name` in Russian, `name_en` in English, `name_hy` in Armenian. Use the common trade name of the part (e.g. "Тормозные колодки передние").',
     '',
     'Numbers:',

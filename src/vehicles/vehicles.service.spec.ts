@@ -98,7 +98,10 @@ describe('VehiclesService VIN uniqueness', () => {
     repo.findOne.mockResolvedValue(makeVehicle());
     repo.save.mockImplementation(async (v: Vehicle) => v);
     await expect(
-      service.update(USER, 'veh-1', { vin: 'WBAPH5C55BA123456', label: 'Mine' }),
+      service.update(USER, 'veh-1', {
+        vin: 'WBAPH5C55BA123456',
+        label: 'Mine',
+      }),
     ).resolves.toMatchObject({ vin: 'WBAPH5C55BA123456', label: 'Mine' });
     expect(repo.count).not.toHaveBeenCalled();
   });

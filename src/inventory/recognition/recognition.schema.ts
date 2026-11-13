@@ -14,6 +14,8 @@ export const FitmentSchema = z.object({
  * parsing (no `.min/.max` here: structured outputs do not support them).
  */
 export const RecognitionSchema = z.object({
+  /** false when the photos show no automotive part, box or label at all. */
+  is_part: z.boolean(),
   brand: z.string().nullable(),
   part_number: z.string().nullable(),
   barcode: z.string().nullable(),
@@ -39,3 +41,5 @@ export const RecognitionSchema = z.object({
 
 export type RecognitionFitment = z.infer<typeof FitmentSchema>;
 export type RecognitionResult = z.infer<typeof RecognitionSchema>;
+/** What `inventory_recognitions.result` holds: the model output minus its `is_part` gate. */
+export type StoredRecognitionResult = Omit<RecognitionResult, 'is_part'>;

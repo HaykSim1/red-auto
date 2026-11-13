@@ -8,7 +8,10 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, RefreshSession, Device]), SellerApplicationsModule],
+  imports: [
+    TypeOrmModule.forFeature([User, RefreshSession, Device]),
+    SellerApplicationsModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

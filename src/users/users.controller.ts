@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiNoContentResponse,
@@ -25,7 +33,11 @@ export class UsersController {
   async me(@CurrentUser() jwt: JwtUserPayload) {
     const me = await this.users.getMe(jwt.sub);
     if (!me) {
-      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return me;
   }

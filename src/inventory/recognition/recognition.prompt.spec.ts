@@ -8,6 +8,10 @@ describe('recognition prompt', () => {
     expect(prompt).toContain('never invent');
   });
 
+  it('system prompt tells the model to flag photos that show no part', () => {
+    expect(buildSystemPrompt()).toContain('is_part');
+  });
+
   it('system prompt is stable (cacheable)', () => {
     expect(buildSystemPrompt()).toBe(buildSystemPrompt());
   });

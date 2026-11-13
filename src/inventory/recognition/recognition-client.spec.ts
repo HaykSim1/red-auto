@@ -3,6 +3,7 @@ import { ClaudeRecognitionClient } from './recognition-client';
 import { RecognitionResult } from './recognition.schema';
 
 const VALID: RecognitionResult = {
+  is_part: true,
   brand: 'Bosch',
   part_number: '0 986 494 527',
   barcode: null,

@@ -163,7 +163,7 @@ export class HomeService {
 
   /** Throws NotFoundException unless `sellerId` is a seller with a shop name. */
   async assertPublicShop(sellerId: string): Promise<void> {
-    const rows = (await this.users.query(
+    const rows = await this.users.query(
       `
       SELECT 1
       FROM users u
@@ -173,7 +173,7 @@ export class HomeService {
         AND btrim(u.shop_name) <> ''
       `,
       [sellerId, UserRole.SELLER],
-    )) as unknown[];
+    );
     if (rows.length === 0) {
       throw new NotFoundException();
     }

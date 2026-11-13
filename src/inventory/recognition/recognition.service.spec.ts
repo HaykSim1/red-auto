@@ -25,6 +25,7 @@ const KEY = (n: number) => `inventory/${SHOP}/photo-${n}.png`;
 
 function parsed(over: Partial<RecognitionResult> = {}): RecognitionResult {
   return {
+    is_part: true,
     brand: 'Bosch',
     part_number: '0 986 494 527',
     barcode: null,
@@ -329,6 +330,8 @@ describe('RecognitionService', () => {
         fitments: 0.7,
       },
     });
+    // The model-only flag is not part of the result DTO.
+    expect(r.result).not.toHaveProperty('is_part');
     expect(inventory.findDuplicate).toHaveBeenCalledWith(
       SHOP,
       '0986494527',
@@ -402,6 +405,22 @@ describe('RecognitionService', () => {
       result: null,
     });
     expect(r2.finishedAt).toBeInstanceOf(Date);
+  });
+
+  it('process marks no_part_detected when the model says the photo shows no part', async () => {
+    client.recognize.mockResolvedValueOnce(
+      call({ parsed: parsed({ is_part: false, name: 'Не обнаружен' }) }),
+    );
+    const r = row();
+    await process(r.id);
+    expect(r).toMatchObject({
+      status: InventoryRecognitionStatus.FAILED,
+      errorCode: 'no_part_detected',
+      result: null,
+      inputTokens: 25000,
+    });
+    expect(r.finishedAt).toBeInstanceOf(Date);
+    expect(inventory.findDuplicate).not.toHaveBeenCalled();
   });
 
   it('process marks ai_error when the client throws, with the message', async () => {

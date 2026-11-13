@@ -93,7 +93,11 @@ export class UsersService {
   async deleteMe(userId: string): Promise<void> {
     const user = await this.users.findOne({ where: { id: userId } });
     if (!user) {
-      throw new ApiException('not_found', 'User not found.', HttpStatus.NOT_FOUND);
+      throw new ApiException(
+        'not_found',
+        'User not found.',
+        HttpStatus.NOT_FOUND,
+      );
     }
     await this.users.update(userId, {
       phone: `deleted:${userId}`,

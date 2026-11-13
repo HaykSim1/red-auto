@@ -13,7 +13,10 @@ import { User } from './user.entity';
 
 @Entity('vehicles')
 /** One VIN per user — migration UniqueVehicleVinPerUser; the service maps violations to vehicle_vin_duplicate. */
-@Index('UQ_vehicles_user_vin', ['user', 'vin'], { unique: true, where: '"vin" IS NOT NULL' })
+@Index('UQ_vehicles_user_vin', ['user', 'vin'], {
+  unique: true,
+  where: '"vin" IS NOT NULL',
+})
 @Check(
   `("vin" IS NOT NULL AND btrim("vin") <> '') OR ("brand" IS NOT NULL AND "model" IS NOT NULL AND "year" IS NOT NULL)`,
 )
