@@ -1050,6 +1050,11 @@ export class InventoryItemPhotoDto {
   @ApiProperty() sort_order: number;
 }
 
+export class InventorySupplierRefDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+}
+
 export class InventoryItemDto {
   @ApiProperty() id: string;
   @ApiProperty({ enum: ['draft', 'active', 'archived'] })
@@ -1078,6 +1083,14 @@ export class InventoryItemDto {
     | number
     | null;
   @ApiProperty() price_currency: string;
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description: 'Last purchase cost per unit. Never in the public catalog.',
+  })
+  cost_amount: number | null;
+  @ApiPropertyOptional({ type: InventorySupplierRefDto, nullable: true })
+  supplier: InventorySupplierRefDto | null;
   @ApiProperty() quantity: number;
   @ApiPropertyOptional({ type: String, nullable: true }) shelf_location:
     | string
@@ -1104,6 +1117,57 @@ export class InventoryItemListResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true }) next_cursor:
     | string
     | null;
+}
+
+export class InventoryItemLookupResponseDto {
+  @ApiProperty({
+    type: [InventoryItemDto],
+    description: 'Items matching the code: none, one, or several.',
+  })
+  items: InventoryItemDto[];
+}
+
+export class InventoryMovementDto {
+  @ApiProperty() id: string;
+  @ApiProperty() item_id: string;
+  @ApiProperty() item_name: string;
+  @ApiProperty({ enum: ['receive', 'sell', 'write_off', 'return', 'adjust'] })
+  type: 'receive' | 'sell' | 'write_off' | 'return' | 'adjust';
+  @ApiProperty({ description: 'Signed change of stock.' }) delta: number;
+  @ApiProperty({ description: 'Stock right after this movement.' })
+  quantity_after: number;
+  @ApiPropertyOptional({ type: Number, nullable: true }) unit_cost:
+    | number
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) note: string | null;
+  @ApiProperty() created_at: string;
+}
+
+export class InventoryMovementResultDto {
+  @ApiProperty({ type: InventoryMovementDto }) movement: InventoryMovementDto;
+  @ApiProperty({ type: InventoryItemDto }) item: InventoryItemDto;
+}
+
+export class InventoryMovementListResponseDto {
+  @ApiProperty({ type: [InventoryMovementDto] }) items: InventoryMovementDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) next_cursor:
+    | string
+    | null;
+}
+
+export class InventorySupplierDto {
+  @ApiProperty() id: string;
+  @ApiProperty() name: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) phone: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) telegram:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) note: string | null;
+  @ApiProperty() created_at: string;
+}
+
+export class InventorySupplierListResponseDto {
+  @ApiProperty({ type: [InventorySupplierDto] }) items: InventorySupplierDto[];
 }
 
 export class InventoryStatsDto {

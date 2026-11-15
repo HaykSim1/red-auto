@@ -33,6 +33,7 @@ const TINY_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 const RECOGNITION_RESULT = {
+  is_part: true,
   brand: 'Bosch',
   part_number: '0 986 AB1 234',
   barcode: null,
@@ -148,6 +149,10 @@ describe('Shop inventory (e2e)', () => {
       ]);
       await dataSource.query(
         `DELETE FROM inventory_recognitions WHERE shop_id = $1`,
+        [sellerId],
+      );
+      await dataSource.query(
+        `DELETE FROM inventory_suppliers WHERE shop_id = $1`,
         [sellerId],
       );
     } catch {
@@ -503,6 +508,368 @@ describe('Shop inventory (e2e)', () => {
         .expect(200);
       expect(keys(again.body)).toEqual([newKey]);
       expect(keys(again.body)).not.toContain(oldKey);
+    });
+  });
+
+  describe('stock movements, scan, cost and suppliers', () => {
+    interface Movement {
+      id: string;
+      item_id: string;
+      item_name: string;
+      type: string;
+      delta: number;
+      quantity_after: number;
+      unit_cost: number | null;
+    }
+    interface Item {
+      id: string;
+      quantity: number;
+      cost_amount: number | null;
+      supplier: { id: string; name: string } | null;
+    }
+    interface Result {
+      movement: Movement;
+      item: Item;
+    }
+
+    const seller = () => auth(sellerToken);
+    // 13 digits, unique per call; by-code does not require a GS1 check digit.
+    const barcode = () =>
+      `29${String(Date.now()).slice(-7)}${Math.floor(Math.random() * 1e4)
+        .toString()
+        .padStart(4, '0')}`;
+
+    const history = async (itemId: string) =>
+      (
+        (
+          await http()
+            .get(`/v1/inventory/items/${itemId}/movements`)
+            .set(seller())
+            .expect(200)
+        ).body as { items: Movement[] }
+      ).items;
+
+    it('creating an item records its opening stock as a receive movement', async () => {
+      const item = await createItem({ quantity: 3, cost_amount: 70 });
+      const rows = await history(item.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        type: 'receive',
+        delta: 3,
+        quantity_after: 3,
+        unit_cost: 70,
+        item_name: item.name,
+      });
+    });
+
+    it('scan-sell by barcode, raise the amount on the same movement, then undo', async () => {
+      const code = barcode();
+      const item = await createItem({ quantity: 5, barcode: code });
+
+      const sold = (
+        await http()
+          .post('/v1/inventory/movements/by-code')
+          .set(seller())
+          .send({ code, type: 'sell' })
+          .expect(201)
+      ).body as Result;
+      expect(sold.movement).toMatchObject({
+        type: 'sell',
+        delta: -1,
+        quantity_after: 4,
+      });
+      expect(sold.item.quantity).toBe(4);
+
+      const three = (
+        await http()
+          .patch(`/v1/inventory/movements/${sold.movement.id}`)
+          .set(seller())
+          .send({ quantity: 3 })
+          .expect(200)
+      ).body as Result;
+      expect(three.movement).toMatchObject({ delta: -3, quantity_after: 2 });
+      expect(three.item.quantity).toBe(2);
+      // One sale row, not three.
+      expect(
+        (await history(item.id)).filter((m) => m.type === 'sell'),
+      ).toHaveLength(1);
+
+      // Cannot sell more than there was before this sale.
+      const tooMany = await http()
+        .patch(`/v1/inventory/movements/${sold.movement.id}`)
+        .set(seller())
+        .send({ quantity: 6 })
+        .expect(400);
+      expect((tooMany.body as { code: string }).code).toBe(
+        'movement_insufficient_stock',
+      );
+
+      const undone = (
+        await http()
+          .delete(`/v1/inventory/movements/${sold.movement.id}`)
+          .set(seller())
+          .expect(200)
+      ).body as Item;
+      expect(undone.quantity).toBe(5);
+      expect((await history(item.id)).map((m) => m.type)).toEqual(['receive']);
+    });
+
+    it('selling out of stock -> 400 movement_insufficient_stock and nothing is recorded', async () => {
+      const code = barcode();
+      const item = await createItem({ quantity: 0, barcode: code });
+      const res = await http()
+        .post('/v1/inventory/movements/by-code')
+        .set(seller())
+        .send({ code, type: 'sell' })
+        .expect(400);
+      expect(res.body).toMatchObject({
+        code: 'movement_insufficient_stock',
+        details: { available: 0 },
+      });
+      expect(await history(item.id)).toHaveLength(0);
+    });
+
+    it('by-code: unknown code -> 404, part number resolves, two items with one code -> 409 with candidates', async () => {
+      const miss = await http()
+        .post('/v1/inventory/movements/by-code')
+        .set(seller())
+        .send({ code: barcode(), type: 'sell' })
+        .expect(404);
+      expect((miss.body as { code: string }).code).toBe(
+        'inventory_item_not_found',
+      );
+
+      const pn = `E2E-${Math.random().toString(36).slice(2, 10)}`;
+      const byPn = await createItem({ quantity: 2, part_number: pn });
+      const sold = (
+        await http()
+          .post('/v1/inventory/movements/by-code')
+          .set(seller())
+          .send({ code: pn.toLowerCase().replace('-', ' '), type: 'sell' })
+          .expect(201)
+      ).body as Result;
+      expect(sold.item.id).toBe(byPn.id);
+
+      const code = barcode();
+      const a = await createItem({ quantity: 1, barcode: code });
+      const b = await createItem({ quantity: 1, barcode: code });
+      const amb = await http()
+        .post('/v1/inventory/movements/by-code')
+        .set(seller())
+        .send({ code, type: 'sell' })
+        .expect(409);
+      const body = amb.body as { code: string; details: { items: Item[] } };
+      expect(body.code).toBe('movement_code_ambiguous');
+      expect(body.details.items.map((i) => i.id).sort()).toEqual(
+        [a.id, b.id].sort(),
+      );
+
+      const looked = (
+        await http()
+          .get('/v1/inventory/items/lookup')
+          .query({ code })
+          .set(seller())
+          .expect(200)
+      ).body as { items: Item[] };
+      expect(looked.items).toHaveLength(2);
+    });
+
+    it('two simultaneous sales of the last unit: exactly one succeeds', async () => {
+      const item = await createItem({ quantity: 1 });
+      const sell = () =>
+        http()
+          .post(`/v1/inventory/items/${item.id}/movements`)
+          .set(seller())
+          .send({ type: 'sell', quantity: 1 });
+      const [a, b] = await Promise.all([sell(), sell()]);
+      expect([a.status, b.status].sort()).toEqual([201, 400]);
+      expect(
+        (await history(item.id)).filter((m) => m.type === 'sell'),
+      ).toHaveLength(1);
+    });
+
+    it('only the latest movement of an item can be changed or undone', async () => {
+      const item = await createItem({ quantity: 5 });
+      const post = async (body: Record<string, unknown>) =>
+        (
+          await http()
+            .post(`/v1/inventory/items/${item.id}/movements`)
+            .set(seller())
+            .send(body)
+            .expect(201)
+        ).body as Result;
+      const first = await post({ type: 'sell', quantity: 1 });
+      await post({ type: 'sell', quantity: 1 });
+      const res = await http()
+        .delete(`/v1/inventory/movements/${first.movement.id}`)
+        .set(seller())
+        .expect(409);
+      expect((res.body as { code: string }).code).toBe('movement_locked');
+    });
+
+    it('receive with a unit cost raises stock and updates the item cost; adjust sets a level', async () => {
+      const item = await createItem({ quantity: 4, cost_amount: 50 });
+      const received = (
+        await http()
+          .post(`/v1/inventory/items/${item.id}/movements`)
+          .set(seller())
+          .send({ type: 'receive', quantity: 10, unit_cost: 65.5 })
+          .expect(201)
+      ).body as Result;
+      expect(received.item).toMatchObject({ quantity: 14, cost_amount: 65.5 });
+
+      const adjusted = (
+        await http()
+          .post(`/v1/inventory/items/${item.id}/movements`)
+          .set(seller())
+          .send({ type: 'adjust', quantity: 9, note: 'recount' })
+          .expect(201)
+      ).body as Result;
+      expect(adjusted.movement).toMatchObject({ delta: -5, quantity_after: 9 });
+
+      const same = await http()
+        .post(`/v1/inventory/items/${item.id}/movements`)
+        .set(seller())
+        .send({ type: 'adjust', quantity: 9 })
+        .expect(400);
+      expect((same.body as { code: string }).code).toBe('movement_no_change');
+    });
+
+    it('legacy PATCH quantity is recorded as an adjust movement', async () => {
+      const item = await createItem({ quantity: 3 });
+      await http()
+        .patch(`/v1/inventory/items/${item.id}`)
+        .set(seller())
+        .send({ quantity: 8, note: 'x' })
+        .expect(200);
+      const rows = await history(item.id);
+      expect(rows[0]).toMatchObject({
+        type: 'adjust',
+        delta: 5,
+        quantity_after: 8,
+      });
+      // An unchanged quantity adds no movement.
+      await http()
+        .patch(`/v1/inventory/items/${item.id}`)
+        .set(seller())
+        .send({ quantity: 8 })
+        .expect(200);
+      expect(await history(item.id)).toHaveLength(2);
+    });
+
+    it('GET /inventory/movements lists the shop feed newest first and pages by cursor', async () => {
+      const item = await createItem({ quantity: 2 });
+      await http()
+        .post(`/v1/inventory/items/${item.id}/movements`)
+        .set(seller())
+        .send({ type: 'sell', quantity: 1 })
+        .expect(201);
+      const page1 = (
+        await http()
+          .get('/v1/inventory/movements')
+          .query({ limit: 1 })
+          .set(seller())
+          .expect(200)
+      ).body as { items: Movement[]; next_cursor: string | null };
+      expect(page1.items[0]).toMatchObject({ item_id: item.id, type: 'sell' });
+      expect(page1.next_cursor).toEqual(expect.any(String));
+      const page2 = (
+        await http()
+          .get('/v1/inventory/movements')
+          .query({ limit: 1, cursor: page1.next_cursor })
+          .set(seller())
+          .expect(200)
+      ).body as { items: Movement[] };
+      expect(page2.items[0]).toMatchObject({
+        item_id: item.id,
+        type: 'receive',
+      });
+    });
+
+    it('buyer gets 403 on movements and suppliers', async () => {
+      await http()
+        .get('/v1/inventory/movements')
+        .set(auth(buyerToken))
+        .expect(403);
+      await http()
+        .get('/v1/inventory/suppliers')
+        .set(auth(buyerToken))
+        .expect(403);
+    });
+
+    it('suppliers: create, unique name, attach to an item, private in the public catalog, delete unlinks', async () => {
+      const name = `E2E Supplier ${Math.random().toString(36).slice(2, 8)}`;
+      const supplier = (
+        await http()
+          .post('/v1/inventory/suppliers')
+          .set(seller())
+          .send({ name, phone: '+37499000000', telegram: '@e2e' })
+          .expect(201)
+      ).body as { id: string; name: string };
+
+      const dup = await http()
+        .post('/v1/inventory/suppliers')
+        .set(seller())
+        .send({ name: name.toUpperCase() })
+        .expect(409);
+      expect((dup.body as { code: string }).code).toBe('supplier_name_taken');
+
+      const item = await createItem({
+        cost_amount: 40,
+        supplier_id: supplier.id,
+      });
+      const mine = (
+        await http()
+          .get(`/v1/inventory/items/${item.id}`)
+          .set(seller())
+          .expect(200)
+      ).body as Item;
+      expect(mine).toMatchObject({
+        cost_amount: 40,
+        supplier: { id: supplier.id, name },
+      });
+
+      const pub = (
+        await http()
+          .get(`/v1/shops/${sellerId}/items/${item.id}`)
+          .set(auth(buyerToken))
+          .expect(200)
+      ).body as Record<string, unknown>;
+      expect(pub).not.toHaveProperty('cost_amount');
+      expect(pub).not.toHaveProperty('supplier');
+      expect(pub).not.toHaveProperty('quantity');
+
+      const foreign = await http()
+        .patch(`/v1/inventory/items/${item.id}`)
+        .set(seller())
+        .send({ supplier_id: '00000000-0000-4000-8000-000000000000' })
+        .expect(404);
+      expect((foreign.body as { code: string }).code).toBe(
+        'supplier_not_found',
+      );
+
+      await http()
+        .delete(`/v1/inventory/suppliers/${supplier.id}`)
+        .set(seller())
+        .expect(204);
+      const after = (
+        await http()
+          .get(`/v1/inventory/items/${item.id}`)
+          .set(seller())
+          .expect(200)
+      ).body as Item;
+      expect(after.supplier).toBeNull();
+      const list = (
+        await http().get('/v1/inventory/suppliers').set(seller()).expect(200)
+      ).body as { items: { id: string }[] };
+      expect(list.items.find((x) => x.id === supplier.id)).toBeUndefined();
+
+      // The name is free again after deletion.
+      await http()
+        .post('/v1/inventory/suppliers')
+        .set(seller())
+        .send({ name })
+        .expect(201);
     });
   });
 });

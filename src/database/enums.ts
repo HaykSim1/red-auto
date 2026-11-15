@@ -66,3 +66,11 @@ export enum InventoryRecognitionStatus {
   DONE = 'done',
   FAILED = 'failed',
 }
+
+export enum InventoryMovementType {
+  RECEIVE = 'receive',
+  SELL = 'sell',
+  WRITE_OFF = 'write_off',
+  RETURN = 'return',
+  ADJUST = 'adjust',
+}

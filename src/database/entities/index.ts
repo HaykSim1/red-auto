@@ -4,7 +4,9 @@ import { Device } from './device.entity';
 import { HomeBanner } from './home-banner.entity';
 import { InventoryItemPhoto } from './inventory-item-photo.entity';
 import { InventoryItem } from './inventory-item.entity';
+import { InventoryMovement } from './inventory-movement.entity';
 import { InventoryRecognition } from './inventory-recognition.entity';
+import { InventorySupplier } from './inventory-supplier.entity';
 import { OfferPhoto } from './offer-photo.entity';
 import { Offer } from './offer.entity';
 import { OtpSession } from './otp-session.entity';
@@ -38,6 +40,8 @@ export const typeOrmEntities = [
   InventoryItem,
   InventoryItemPhoto,
   InventoryRecognition,
+  InventoryMovement,
+  InventorySupplier,
 ] as const;
 
 export {
@@ -47,7 +51,9 @@ export {
   HomeBanner,
   InventoryItem,
   InventoryItemPhoto,
+  InventoryMovement,
   InventoryRecognition,
+  InventorySupplier,
   Offer,
   OfferPhoto,
   OtpSession,

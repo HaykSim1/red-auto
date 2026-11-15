@@ -23,7 +23,8 @@ import {
   InventoryItem,
 } from '../database/entities/inventory-item.entity';
 import { InventoryRecognition } from '../database/entities/inventory-recognition.entity';
-import { InventoryItemStatus } from '../database/enums';
+import { InventorySupplier } from '../database/entities/inventory-supplier.entity';
+import { InventoryItemStatus, InventoryMovementType } from '../database/enums';
 import { isKnownCategoryKey } from './catalog/part-categories';
 import { normalizeMake } from './catalog/car-brands';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
@@ -36,14 +37,12 @@ import {
   normalizeOemNumbers,
   normalizePartNumber,
 } from './normalize';
+import {
+  itemNotFound as notFound,
+  lockItem,
+  recordMovement,
+} from './movements';
 import { assertInventoryKeys } from './storage-keys';
-
-const notFound = () =>
-  new ApiException(
-    'inventory_item_not_found',
-    'Inventory item not found.',
-    HttpStatus.NOT_FOUND,
-  );
 
 function nullable<T>(v: T | null | undefined): T | null {
   return v === undefined ? null : v;
@@ -158,6 +157,35 @@ export class InventoryService {
     });
   }
 
+  /**
+   * Items a scanned / typed code points at: barcode matches first, and only
+   * when there are none, part-number matches. Non-archived, newest first.
+   */
+  async resolveCode(shopId: string, code: string): Promise<InventoryItem[]> {
+    const base = {
+      shop: { id: shopId },
+      status: Not(InventoryItemStatus.ARCHIVED),
+    };
+    const find = (where: Record<string, unknown>) =>
+      this.items.find({
+        where: { ...base, ...where },
+        order: { createdAt: 'DESC' },
+        relations: { photos: true, recognition: true, supplier: true },
+        take: 10,
+      });
+    const barcode = digitsOnly8to14(code);
+    if (barcode) {
+      const byBarcode = await find({ barcode });
+      if (byBarcode.length > 0) return byBarcode;
+    }
+    const partNumberNormalized = normalizePartNumber(code);
+    return partNumberNormalized ? find({ partNumberNormalized }) : [];
+  }
+
+  async lookup(shopId: string, code: string): Promise<InventoryItemDto[]> {
+    return (await this.resolveCode(shopId, code)).map((i) => this.serialize(i));
+  }
+
   // ── Writes ──
 
   async create(
@@ -189,6 +217,9 @@ export class InventoryService {
     // The AI flags come from the stored recognition, never from the client.
     // Activating an item means the shop reviewed it, so the flags clear.
     const ai = recognition?.result ?? null;
+    // Stock is written only through movements: the row starts at 0 and the
+    // opening quantity (DB default 1 when omitted) arrives as a `receive`.
+    const openingStock = dto.quantity ?? 1;
     const id = await this.ds.transaction(async (m) => {
       const items = m.getRepository(InventoryItem);
       const item = items.create({
@@ -201,9 +232,20 @@ export class InventoryService {
             : [],
         aiConfidence: ai ? { ...ai.confidence } : null,
         ...this.fields(dto),
+        ...(await this.supplierField(m, shopId, dto.supplier_id)),
+        quantity: 0,
       } as Partial<InventoryItem>);
       const saved = await items.save(item);
       await this.insertPhotos(m, saved, keys);
+      if (openingStock > 0) {
+        await recordMovement(m, saved, {
+          shopId,
+          userId: shopId,
+          type: InventoryMovementType.RECEIVE,
+          delta: openingStock,
+          unitCost: dto.cost_amount,
+        });
+      }
       return saved.id;
     });
     return this.get(shopId, id);
@@ -218,10 +260,18 @@ export class InventoryService {
     if (dto.photo_storage_keys !== undefined) {
       assertInventoryKeys(shopId, dto.photo_storage_keys);
     }
+    // `quantity` on PATCH is legacy (old clients send the whole form): a
+    // changed value becomes an `adjust` movement instead of a silent write.
+    const { quantity: newQuantity, ...fieldsDto } = dto;
     await this.ds.transaction(async (m) => {
       const items = m.getRepository(InventoryItem);
+      const locked = await lockItem(m, shopId, id);
       const item = await this.load(items, shopId, id);
-      Object.assign(item, this.fields(dto));
+      Object.assign(
+        item,
+        this.fields(fieldsDto),
+        await this.supplierField(m, shopId, dto.supplier_id),
+      );
       if (dto.status) {
         item.status =
           dto.status === 'draft'
@@ -235,6 +285,14 @@ export class InventoryService {
       if (dto.photo_storage_keys !== undefined) {
         await m.getRepository(InventoryItemPhoto).delete({ item: { id } });
         await this.insertPhotos(m, item, dto.photo_storage_keys);
+      }
+      if (newQuantity !== undefined && newQuantity !== locked.quantity) {
+        await recordMovement(m, locked, {
+          shopId,
+          userId: shopId,
+          type: InventoryMovementType.ADJUST,
+          delta: newQuantity - locked.quantity,
+        });
       }
     });
     return this.get(shopId, id);
@@ -270,6 +328,10 @@ export class InventoryService {
       condition: item.condition,
       price_amount: this.price(item),
       price_currency: item.priceCurrency,
+      cost_amount: this.money(item.costAmount),
+      supplier: item.supplier
+        ? { id: item.supplier.id, name: item.supplier.name }
+        : null,
       quantity: item.quantity,
       shelf_location: item.shelfLocation,
       note: item.note,
@@ -307,9 +369,32 @@ export class InventoryService {
   // ── Helpers ──
 
   private price(item: InventoryItem): number | null {
-    return item.priceAmount === null || item.priceAmount === undefined
-      ? null
-      : Number(item.priceAmount);
+    return this.money(item.priceAmount);
+  }
+
+  private money(v: string | null | undefined): number | null {
+    return v === null || v === undefined ? null : Number(v);
+  }
+
+  /** `{ supplier }` to assign when the DTO carries supplier_id, else `{}`. */
+  private async supplierField(
+    m: EntityManager,
+    shopId: string,
+    supplierId: string | null | undefined,
+  ): Promise<{ supplier?: InventorySupplier | null }> {
+    if (supplierId === undefined) return {};
+    if (supplierId === null) return { supplier: null };
+    const supplier = await m.getRepository(InventorySupplier).findOne({
+      where: { id: supplierId, shop: { id: shopId } },
+    });
+    if (!supplier) {
+      throw new ApiException(
+        'supplier_not_found',
+        'Supplier not found.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    return { supplier };
   }
 
   private photos(item: InventoryItem) {
@@ -339,7 +424,7 @@ export class InventoryService {
         shop: { id: shopId },
         status: Not(InventoryItemStatus.ARCHIVED),
       },
-      relations: { photos: true, recognition: true },
+      relations: { photos: true, recognition: true, supplier: true },
     });
     if (!item) throw notFound();
     return item;
@@ -387,7 +472,10 @@ export class InventoryService {
       out.priceAmount =
         dto.price_amount === null ? null : String(dto.price_amount);
     }
-    if (dto.quantity !== undefined) out.quantity = dto.quantity;
+    if (dto.cost_amount !== undefined) {
+      out.costAmount =
+        dto.cost_amount === null ? null : String(dto.cost_amount);
+    }
     if (dto.shelf_location !== undefined) {
       out.shelfLocation = dto.shelf_location;
     }
@@ -412,6 +500,7 @@ export class InventoryService {
     const qb = this.items
       .createQueryBuilder('i')
       .leftJoinAndSelect('i.photos', 'photos')
+      .leftJoinAndSelect('i.supplier', 'supplier')
       .where('i.shop_id = :shopId', { shopId });
 
     const term = q.q?.trim();

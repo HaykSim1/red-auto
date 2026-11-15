@@ -63,6 +63,14 @@ describe('InventoryService', () => {
         else store.push(makeItem(withId));
         return Promise.resolve(withId);
       }),
+      // Stock writes go through recordMovement, which uses update().
+      update: jest.fn(
+        (where: { id: string }, patch: Partial<InventoryItem>) => {
+          const idx = store.findIndex((x) => x.id === where.id);
+          if (idx >= 0) store[idx] = { ...store[idx], ...patch };
+          return Promise.resolve({ affected: 1 });
+        },
+      ),
       // The service always filters out archived items in findOne.
       findOne: jest.fn(() =>
         Promise.resolve(

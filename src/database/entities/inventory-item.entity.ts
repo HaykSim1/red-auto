@@ -12,6 +12,7 @@ import {
 import { InventoryItemStatus, OfferCondition } from '../enums';
 import { InventoryItemPhoto } from './inventory-item-photo.entity';
 import { InventoryRecognition } from './inventory-recognition.entity';
+import { InventorySupplier } from './inventory-supplier.entity';
 import { User } from './user.entity';
 
 export interface InventoryFitment {
@@ -93,8 +94,26 @@ export class InventoryItem {
   @Column({ type: 'text', name: 'price_currency', default: 'AMD' })
   priceCurrency: string;
 
+  /** Last purchase cost per unit. Private to the shop. */
+  @Column({
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    name: 'cost_amount',
+    nullable: true,
+  })
+  costAmount: string | null;
+
+  /**
+   * Cached stock level. Written only through inventory movements
+   * (see inventory/movements.ts) — never assign it directly.
+   */
   @Column({ type: 'int', default: 1 })
   quantity: number;
+
+  @ManyToOne(() => InventorySupplier, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'supplier_id' })
+  supplier: InventorySupplier | null;
 
   @Column({ type: 'text', name: 'shelf_location', nullable: true })
   shelfLocation: string | null;

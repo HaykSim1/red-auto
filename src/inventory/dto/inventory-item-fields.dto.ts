@@ -9,6 +9,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -99,10 +100,35 @@ export class InventoryItemFieldsDto {
   @Max(9_999_999_999)
   price_amount?: number | null;
 
-  @ApiPropertyOptional({ default: 1, minimum: 0 })
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: 0,
+    maximum: 9_999_999_999,
+    description: 'Last purchase cost per unit. Private to the shop.',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(9_999_999_999)
+  cost_amount?: number | null;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  supplier_id?: string | null;
+
+  @ApiPropertyOptional({
+    default: 1,
+    minimum: 0,
+    maximum: 1_000_000,
+    description:
+      'On create: opening stock (recorded as a `receive` movement). On update: deprecated — a changed value is recorded as an `adjust` movement; use POST items/:id/movements instead.',
+  })
   @OptionalNotNull()
   @IsInt()
   @Min(0)
+  @Max(1_000_000)
   quantity?: number;
 
   @ApiPropertyOptional({ type: String, nullable: true })
