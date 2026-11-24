@@ -208,6 +208,7 @@ export class InventoryService {
     const hasMore = entities.length > take;
     const rows = hasMore ? entities.slice(0, take) : entities;
     const last = rows.length - 1;
+    const covers = await this.coverKeys(rows.map((r) => r.id));
     return {
       items: rows.map((i) => ({
         id: i.id,
@@ -225,6 +226,7 @@ export class InventoryService {
         cost_amount: this.money(i.costAmount),
         shelf_location: i.shelfLocation,
         needs_review: i.needsReview,
+        cover_storage_key: covers.get(i.id) ?? null,
         updated_at: i.updatedAt.toISOString(),
       })),
       next_cursor:
@@ -420,6 +422,20 @@ export class InventoryService {
       ...rest,
       status: InventoryItemStatus.ARCHIVED,
     } as InventoryItem);
+  }
+
+  /** First photo of each item, in one query. */
+  private async coverKeys(itemIds: string[]): Promise<Map<string, string>> {
+    if (itemIds.length === 0) return new Map();
+    const rows: { item_id: string; storage_key: string }[] =
+      await this.ds.query(
+        `SELECT DISTINCT ON ("item_id") "item_id", "storage_key"
+       FROM "inventory_item_photos"
+       WHERE "item_id" = ANY($1)
+       ORDER BY "item_id", "sort_order", "id"`,
+        [itemIds],
+      );
+    return new Map(rows.map((r) => [r.item_id, r.storage_key]));
   }
 
   // ── Serialization ──

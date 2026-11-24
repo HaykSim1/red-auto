@@ -1205,6 +1205,12 @@ export class InventoryIndexItemDto {
     | string
     | null;
   @ApiProperty({ type: [String] }) needs_review: string[];
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description: 'Storage key of the first photo.',
+  })
+  cover_storage_key: string | null;
   @ApiProperty() updated_at: string;
 }
 

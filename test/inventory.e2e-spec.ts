@@ -1076,6 +1076,7 @@ describe('Shop inventory (e2e)', () => {
           barcode: code,
         });
         expect(seen.get(gone.id)).toMatchObject({ status: 'archived' });
+        expect(seen.get(kept.id)).toHaveProperty('cover_storage_key', null);
       });
 
       it('items/index with updated_since returns what changed, including a stock change', async () => {
