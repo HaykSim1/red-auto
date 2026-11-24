@@ -12,6 +12,7 @@ jest.mock('expo-server-sdk', () => ({
   },
 }));
 
+import { randomUUID } from 'node:crypto';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -870,6 +871,239 @@ describe('Shop inventory (e2e)', () => {
         .set(seller())
         .send({ name })
         .expect(201);
+    });
+
+    describe('offline operations', () => {
+      interface BatchResult {
+        client_op_id: string;
+        status: 'applied' | 'duplicate' | 'rejected';
+        error_code?: string;
+        movement?: Movement & { forced: boolean; occurred_at: string | null };
+        item?: Item & { needs_review: string[] };
+      }
+      interface IndexRow {
+        id: string;
+        status: string;
+        quantity: number;
+        barcode: string | null;
+      }
+      interface IndexPage {
+        items: IndexRow[];
+        next_cursor: string | null;
+        server_time: string;
+      }
+
+      const op = (itemId: string, type: 'sell' | 'receive', quantity = 1) => ({
+        client_op_id: randomUUID(),
+        item_id: itemId,
+        type,
+        quantity,
+        occurred_at: new Date(Date.now() - 60_000).toISOString(),
+      });
+      const batch = async (operations: unknown[], status = 200) =>
+        (
+          await http()
+            .post('/v1/inventory/movements/batch')
+            .set(seller())
+            .send({ operations })
+            .expect(status)
+        ).body as { results: BatchResult[] };
+      const getItem = async (id: string) =>
+        (
+          await http()
+            .get(`/v1/inventory/items/${id}`)
+            .set(seller())
+            .expect(200)
+        ).body as Item & { needs_review: string[] };
+      const index = async (query: Record<string, string | number> = {}) =>
+        (
+          await http()
+            .get('/v1/inventory/items/index')
+            .query(query)
+            .set(seller())
+            .expect(200)
+        ).body as IndexPage;
+
+      it('applies a batch in order; a repeated id is a duplicate; an archived item is rejected', async () => {
+        const item = await createItem({ quantity: 5 });
+        const gone = await createItem({ quantity: 5 });
+        await http()
+          .delete(`/v1/inventory/items/${gone.id}`)
+          .set(seller())
+          .expect(204);
+
+        const sell = op(item.id, 'sell', 2);
+        const receive = op(item.id, 'receive', 10);
+        const { results } = await batch([
+          sell,
+          receive,
+          sell,
+          op(gone.id, 'sell'),
+        ]);
+
+        expect(results.map((r) => r.status)).toEqual([
+          'applied',
+          'applied',
+          'duplicate',
+          'rejected',
+        ]);
+        expect(results.map((r) => r.client_op_id)).toEqual([
+          sell.client_op_id,
+          receive.client_op_id,
+          sell.client_op_id,
+          results[3].client_op_id,
+        ]);
+        expect(results[0].movement).toMatchObject({
+          delta: -2,
+          quantity_after: 3,
+          forced: false,
+          occurred_at: sell.occurred_at,
+        });
+        expect(results[2].movement?.id).toBe(results[0].movement?.id);
+        expect(results[3].error_code).toBe('inventory_item_not_found');
+        expect(results[1].item?.quantity).toBe(13);
+
+        // opening receive + sell + receive: the repeated sale was not recorded twice
+        expect(await history(item.id)).toHaveLength(3);
+        expect((await getItem(item.id)).quantity).toBe(13);
+      });
+
+      it('sending the same batch again changes nothing', async () => {
+        const item = await createItem({ quantity: 4 });
+        const ops = [op(item.id, 'sell'), op(item.id, 'sell')];
+        await batch(ops);
+        const again = await batch(ops);
+        expect(again.results.map((r) => r.status)).toEqual([
+          'duplicate',
+          'duplicate',
+        ]);
+        expect((await getItem(item.id)).quantity).toBe(2);
+      });
+
+      it('a sale beyond the stock is forced: stock 0, flagged for a recount, cleared by an adjust', async () => {
+        const item = await createItem({ quantity: 1 });
+        const { results } = await batch([
+          op(item.id, 'sell'),
+          op(item.id, 'sell'),
+        ]);
+        expect(results[0].movement).toMatchObject({
+          forced: false,
+          quantity_after: 0,
+        });
+        expect(results[1]).toMatchObject({ status: 'applied' });
+        expect(results[1].movement).toMatchObject({
+          forced: true,
+          delta: -1,
+          quantity_after: 0,
+        });
+        const flagged = await getItem(item.id);
+        expect(flagged.quantity).toBe(0);
+        expect(flagged.needs_review).toContain('quantity');
+
+        await http()
+          .post(`/v1/inventory/items/${item.id}/movements`)
+          .set(seller())
+          .send({ type: 'adjust', quantity: 2 })
+          .expect(201);
+        const counted = await getItem(item.id);
+        expect(counted.quantity).toBe(2);
+        expect(counted.needs_review).not.toContain('quantity');
+      });
+
+      it('the single endpoints stay strict and become idempotent with client_op_id', async () => {
+        const code = barcode();
+        const item = await createItem({ quantity: 1, barcode: code });
+        const client_op_id = randomUUID();
+        const send = () =>
+          http()
+            .post('/v1/inventory/movements/by-code')
+            .set(seller())
+            .send({ code, type: 'sell', client_op_id })
+            .expect(201);
+        const first = (await send()).body as Result;
+        const second = (await send()).body as Result;
+        expect(second.movement.id).toBe(first.movement.id);
+        expect((await getItem(item.id)).quantity).toBe(0);
+        expect(await history(item.id)).toHaveLength(2);
+
+        // A different operation on the empty item is still refused here.
+        await http()
+          .post('/v1/inventory/movements/by-code')
+          .set(seller())
+          .send({ code, type: 'sell', client_op_id: randomUUID() })
+          .expect(400);
+      });
+
+      it('batch validation: only sell / receive, 1 to 100 operations', async () => {
+        const item = await createItem({ quantity: 1 });
+        await batch([{ ...op(item.id, 'sell'), type: 'adjust' }], 400);
+        await batch([], 400);
+        await batch(
+          Array.from({ length: 101 }, () => op(item.id, 'receive')),
+          400,
+        );
+        expect(await history(item.id)).toHaveLength(1);
+      });
+
+      it('items/index lists every item, archived ones as tombstones, and pages without repeats', async () => {
+        const code = barcode();
+        const kept = await createItem({ quantity: 2, barcode: code });
+        const gone = await createItem({ quantity: 1 });
+        await http()
+          .delete(`/v1/inventory/items/${gone.id}`)
+          .set(seller())
+          .expect(204);
+
+        const seen = new Map<string, IndexRow>();
+        let cursor: string | null = null;
+        let pages = 0;
+        do {
+          const page: IndexPage = await index(
+            cursor ? { limit: 2, cursor } : { limit: 2 },
+          );
+          for (const row of page.items) {
+            expect(seen.has(row.id)).toBe(false);
+            seen.set(row.id, row);
+          }
+          cursor = page.next_cursor;
+          pages += 1;
+        } while (cursor && pages < 500);
+
+        expect(cursor).toBeNull();
+        expect(seen.get(kept.id)).toMatchObject({
+          status: 'active',
+          quantity: 2,
+          barcode: code,
+        });
+        expect(seen.get(gone.id)).toMatchObject({ status: 'archived' });
+      });
+
+      it('items/index with updated_since returns what changed, including a stock change', async () => {
+        const item = await createItem({ quantity: 3 });
+        const other = await createItem({ quantity: 3 });
+        await new Promise((r) => setTimeout(r, 20));
+        const since = new Date().toISOString();
+        await new Promise((r) => setTimeout(r, 20));
+        await batch([op(item.id, 'sell')]);
+
+        const page = await index({ updated_since: since });
+        const row = page.items.find((r) => r.id === item.id);
+        expect(row).toMatchObject({ quantity: 2 });
+        expect(page.items.find((r) => r.id === other.id)).toBeUndefined();
+        expect(Date.parse(page.server_time)).toBeLessThan(Date.now());
+      });
+
+      it('buyer gets 403 on batch and index', async () => {
+        await http()
+          .post('/v1/inventory/movements/batch')
+          .set(auth(buyerToken))
+          .send({ operations: [op(randomUUID(), 'sell')] })
+          .expect(403);
+        await http()
+          .get('/v1/inventory/items/index')
+          .set(auth(buyerToken))
+          .expect(403);
+      });
     });
   });
 });

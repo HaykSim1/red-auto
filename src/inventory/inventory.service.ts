@@ -9,6 +9,7 @@ import {
   SelectQueryBuilder,
 } from 'typeorm';
 import {
+  InventoryIndexResponseDto,
   InventoryItemListResponseDto,
   InventoryItemDto,
   InventoryStatsDto,
@@ -30,6 +31,7 @@ import { normalizeMake } from './catalog/car-brands';
 import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { FitmentDto } from './dto/fitment.dto';
 import { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto';
+import { ItemIndexQueryDto } from './dto/movement.dto';
 import { ShopCatalogQueryDto } from './dto/shop-catalog-query.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
 import {
@@ -43,6 +45,30 @@ import {
   recordMovement,
 } from './movements';
 import { assertInventoryKeys } from './storage-keys';
+
+/** How far `server_time` is moved back so a late commit is not skipped. */
+export const INDEX_SYNC_OVERLAP_MS = 30_000;
+
+function encodeIndexCursor(t: string, id: string): string {
+  return Buffer.from(JSON.stringify({ t, id }), 'utf8').toString('base64url');
+}
+
+function decodeIndexCursor(raw: string): { t: string; id: string } | null {
+  try {
+    const o = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as {
+      t?: unknown;
+      id?: unknown;
+    };
+    if (typeof o.t !== 'string' || typeof o.id !== 'string') return null;
+    // Both values go into SQL as parameters; this only rejects junk early.
+    if (Number.isNaN(Date.parse(o.t)) || !/^[0-9a-f-]{36}$/i.test(o.id)) {
+      return null;
+    }
+    return { t: o.t, id: o.id };
+  } catch {
+    return null;
+  }
+}
 
 function nullable<T>(v: T | null | undefined): T | null {
   return v === undefined ? null : v;
@@ -121,6 +147,94 @@ export class InventoryService {
 
   async get(shopId: string, id: string): Promise<InventoryItemDto> {
     return this.serialize(await this.load(this.items, shopId, id));
+  }
+
+  /**
+   * Like {@link get}, but an archived item is still returned. For reporting
+   * the result of an operation whose item was archived after it was recorded.
+   */
+  async getIncludingArchived(
+    shopId: string,
+    id: string,
+  ): Promise<InventoryItemDto> {
+    const item = await this.items.findOne({
+      where: { id, shop: { id: shopId } },
+      relations: { photos: true, recognition: true, supplier: true },
+      withDeleted: true,
+    });
+    if (!item) throw notFound();
+    return this.serialize(item);
+  }
+
+  /**
+   * Compact rows of every item of the shop — archived ones included, so a
+   * device can drop them — for resolving a scan with no connection. Ordered
+   * by `updated_at` so a device can ask only for what changed.
+   */
+  async index(
+    shopId: string,
+    q: ItemIndexQueryDto,
+  ): Promise<InventoryIndexResponseDto> {
+    const take = Math.min(Math.max(q.limit ?? 1000, 1), 1000);
+    // Postgres keeps microseconds and a JS Date does not, so the cursor
+    // carries the timestamp as text; comparing a truncated value would return
+    // the boundary row again on the next page.
+    const qb = this.items
+      .createQueryBuilder('i')
+      .withDeleted()
+      .addSelect(
+        `to_char(i.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+        'cursor_t',
+      )
+      .where('i.shop_id = :shopId', { shopId })
+      .orderBy('i.updatedAt', 'ASC')
+      .addOrderBy('i.id', 'ASC')
+      .limit(take + 1);
+    if (q.updated_since) {
+      qb.andWhere('i.updated_at >= :since', {
+        since: new Date(q.updated_since),
+      });
+    }
+    const cursor = q.cursor ? decodeIndexCursor(q.cursor) : null;
+    if (cursor) {
+      qb.andWhere(
+        '(i.updated_at > CAST(:ct AS timestamptz) OR (i.updated_at = CAST(:ct AS timestamptz) AND i.id > :cid))',
+        { ct: cursor.t, cid: cursor.id },
+      );
+    }
+    const { entities, raw } = await qb.getRawAndEntities<{
+      cursor_t: string;
+    }>();
+    const hasMore = entities.length > take;
+    const rows = hasMore ? entities.slice(0, take) : entities;
+    const last = rows.length - 1;
+    return {
+      items: rows.map((i) => ({
+        id: i.id,
+        status: i.deletedAt ? InventoryItemStatus.ARCHIVED : i.status,
+        name: i.name,
+        name_hy: i.nameHy,
+        name_en: i.nameEn,
+        brand: i.brand,
+        part_number: i.partNumber,
+        part_number_normalized: i.partNumberNormalized,
+        barcode: i.barcode,
+        quantity: i.quantity,
+        price_amount: this.price(i),
+        price_currency: i.priceCurrency,
+        cost_amount: this.money(i.costAmount),
+        shelf_location: i.shelfLocation,
+        needs_review: i.needsReview,
+        updated_at: i.updatedAt.toISOString(),
+      })),
+      next_cursor:
+        hasMore && last >= 0
+          ? encodeIndexCursor(raw[last].cursor_t, rows[last].id)
+          : null,
+      // A transaction that began before this request can still commit a row
+      // stamped earlier than "now"; the overlap makes the next sync see it.
+      server_time: new Date(Date.now() - INDEX_SYNC_OVERLAP_MS).toISOString(),
+    };
   }
 
   async getPublic(shopId: string, itemId: string): Promise<ShopCatalogItemDto> {

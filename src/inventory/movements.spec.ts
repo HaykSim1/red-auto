@@ -3,6 +3,7 @@ import { InventoryItem } from '../database/entities/inventory-item.entity';
 import { InventoryMovement } from '../database/entities/inventory-movement.entity';
 import { InventoryMovementType as T } from '../database/enums';
 import { deltaFor, recordMovement } from './movements';
+import { clampOccurredAt } from './movements.service';
 
 describe('deltaFor', () => {
   it('receive and return add, sell and write_off subtract', () => {
@@ -107,5 +108,99 @@ describe('recordMovement', () => {
     });
     expect(movementSaves[0].unitCost).toBeNull();
     expect(itemUpdates[0]).toEqual({ quantity: 4 });
+  });
+
+  describe('forced (an operation that already happened offline)', () => {
+    it('applies a sale larger than the stock: real delta, stock 0, flagged for a recount', async () => {
+      const it = item(1);
+      await recordMovement(m, it, {
+        ...args,
+        type: T.SELL,
+        delta: -3,
+        force: true,
+      });
+      expect(movementSaves[0]).toMatchObject({
+        delta: -3,
+        quantityAfter: 0,
+        forced: true,
+      });
+      expect(itemUpdates[0]).toEqual({
+        quantity: 0,
+        needsReview: ['quantity'],
+      });
+      expect(it.quantity).toBe(0);
+    });
+
+    it('keeps other review flags and does not add the recount flag twice', async () => {
+      const it = {
+        ...item(0),
+        needsReview: ['fitments', 'quantity'],
+      } as InventoryItem;
+      await recordMovement(m, it, {
+        ...args,
+        type: T.SELL,
+        delta: -1,
+        force: true,
+      });
+      expect(itemUpdates[0]).toEqual({ quantity: 0 });
+    });
+
+    it('with enough stock behaves like a normal movement', async () => {
+      await recordMovement(m, item(5), {
+        ...args,
+        type: T.SELL,
+        delta: -2,
+        force: true,
+      });
+      expect(movementSaves[0]).toMatchObject({
+        quantityAfter: 3,
+        forced: false,
+      });
+      expect(itemUpdates[0]).toEqual({ quantity: 3 });
+    });
+  });
+
+  it('an adjust clears the recount flag and leaves other review flags', async () => {
+    const it = {
+      ...item(0),
+      needsReview: ['fitments', 'quantity'],
+    } as InventoryItem;
+    await recordMovement(m, it, { ...args, type: T.ADJUST, delta: 4 });
+    expect(itemUpdates[0]).toEqual({ quantity: 4, needsReview: ['fitments'] });
+  });
+
+  it('stores the client operation id and the device time', async () => {
+    const occurredAt = new Date('2026-11-20T10:00:00.000Z');
+    await recordMovement(m, item(2), {
+      ...args,
+      type: T.SELL,
+      delta: -1,
+      clientOpId: 'op-1',
+      occurredAt,
+    });
+    expect(movementSaves[0]).toMatchObject({ clientOpId: 'op-1', occurredAt });
+  });
+});
+
+describe('clampOccurredAt', () => {
+  const now = Date.parse('2026-11-24T12:00:00.000Z');
+
+  it('keeps a past time, however old', () => {
+    expect(clampOccurredAt('2026-11-01T08:00:00.000Z', now).toISOString()).toBe(
+      '2026-11-01T08:00:00.000Z',
+    );
+  });
+
+  it('tolerates a clock a few minutes ahead', () => {
+    expect(clampOccurredAt('2026-11-24T12:04:00.000Z', now).toISOString()).toBe(
+      '2026-11-24T12:04:00.000Z',
+    );
+  });
+
+  it('replaces a time far in the future, or junk, with now', () => {
+    expect(clampOccurredAt('2026-11-25T12:00:00.000Z', now).getTime()).toBe(
+      now,
+    );
+    expect(clampOccurredAt('nonsense', now).getTime()).toBe(now);
   });
 });

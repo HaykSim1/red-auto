@@ -80,6 +80,9 @@ export function deltaFor(
     : -quantity;
 }
 
+/** `needs_review` entry meaning "the stock number is not trusted, recount". */
+export const NEEDS_RECOUNT = 'quantity';
+
 export interface RecordMovementArgs {
   shopId: string;
   userId: string;
@@ -87,6 +90,14 @@ export interface RecordMovementArgs {
   delta: number;
   unitCost?: number | null;
   note?: string | null;
+  clientOpId?: string | null;
+  occurredAt?: Date | null;
+  /**
+   * The operation already happened in the shop (it was made offline), so it
+   * is applied even when stock is insufficient: stock is clamped to 0 and the
+   * item is flagged for a recount instead of the movement being refused.
+   */
+  force?: boolean;
 }
 
 /**
@@ -99,8 +110,10 @@ export async function recordMovement(
   item: InventoryItem,
   args: RecordMovementArgs,
 ): Promise<InventoryMovement> {
-  const after = item.quantity + args.delta;
-  if (after < 0) throw insufficientStock(item.quantity);
+  const wanted = item.quantity + args.delta;
+  if (wanted < 0 && !args.force) throw insufficientStock(item.quantity);
+  const forced = wanted < 0;
+  const after = forced ? 0 : wanted;
 
   const isReceive = args.type === InventoryMovementType.RECEIVE;
   const unitCost =
@@ -118,12 +131,25 @@ export async function recordMovement(
       quantityAfter: after,
       unitCost,
       note: args.note?.trim() || null,
+      clientOpId: args.clientOpId ?? null,
+      occurredAt: args.occurredAt ?? null,
+      forced,
       createdBy: { id: args.userId },
     }),
   );
 
   const patch: Partial<InventoryItem> = { quantity: after };
   if (unitCost !== null) patch.costAmount = unitCost;
+  const review = item.needsReview ?? [];
+  if (forced && !review.includes(NEEDS_RECOUNT)) {
+    patch.needsReview = [...review, NEEDS_RECOUNT];
+  } else if (
+    args.type === InventoryMovementType.ADJUST &&
+    review.includes(NEEDS_RECOUNT)
+  ) {
+    // A deliberate count settles the doubt a forced sale left behind.
+    patch.needsReview = review.filter((f) => f !== NEEDS_RECOUNT);
+  }
   await m.getRepository(InventoryItem).update({ id: item.id }, patch);
   Object.assign(item, patch);
   return movement;

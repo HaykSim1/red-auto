@@ -2,6 +2,8 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
+  InventoryBatchResponseDto,
+  InventoryBatchResultDto,
   InventoryItemDto,
   InventoryMovementDto,
   InventoryMovementListResponseDto,
@@ -13,6 +15,7 @@ import { decodeCursor, encodeCursor } from '../common/utils/cursor-pagination';
 import { InventoryItem } from '../database/entities/inventory-item.entity';
 import { InventoryMovement } from '../database/entities/inventory-movement.entity';
 import {
+  BatchOperationDto,
   CreateMovementByCodeDto,
   CreateMovementDto,
   UpdateMovementDto,
@@ -28,6 +31,21 @@ import {
 
 /** A movement can be edited or undone only this long after it was made. */
 export const MOVEMENT_EDIT_WINDOW_MS = 10 * 60 * 1000;
+
+/** A device clock this far ahead of the server is treated as wrong. */
+export const OCCURRED_AT_MAX_AHEAD_MS = 5 * 60 * 1000;
+
+/**
+ * Device time of an offline operation. There is no lower bound: a phone may
+ * have been offline for days and the sale still happened. A time in the
+ * future can only be a wrong clock, so it becomes "now".
+ */
+export function clampOccurredAt(iso: string, now = Date.now()): Date {
+  const t = new Date(iso).getTime();
+  return new Date(
+    Number.isNaN(t) || t > now + OCCURRED_AT_MAX_AHEAD_MS ? now : t,
+  );
+}
 
 const movementNotFound = () =>
   new ApiException(
@@ -53,6 +71,9 @@ export class MovementsService {
   ): Promise<InventoryMovementResultDto> {
     const movement = await this.ds.transaction(async (m) => {
       const item = await lockItem(m, shopId, itemId);
+      // Under the item lock: a retry of the same operation finds the first one.
+      const earlier = await this.findByClientOp(m, shopId, dto.client_op_id);
+      if (earlier) return earlier;
       return recordMovement(m, item, {
         shopId,
         userId,
@@ -60,9 +81,94 @@ export class MovementsService {
         delta: deltaFor(dto.type, dto.quantity, item.quantity),
         unitCost: dto.unit_cost,
         note: dto.note,
+        clientOpId: dto.client_op_id,
       });
     });
-    return this.result(shopId, itemId, movement);
+    return this.result(shopId, movement.item?.id ?? itemId, movement);
+  }
+
+  /**
+   * Operations made on a device with no connection, in the order they were
+   * made. Each runs in its own transaction, so one that can never succeed
+   * (the item is gone) is reported and the rest still apply. They already
+   * happened in the shop, so a sale larger than the stock is forced rather
+   * than refused.
+   */
+  async applyBatch(
+    shopId: string,
+    userId: string,
+    operations: BatchOperationDto[],
+  ): Promise<InventoryBatchResponseDto> {
+    const results: InventoryBatchResultDto[] = [];
+    for (const op of operations) {
+      results.push(await this.applyOne(shopId, userId, op));
+    }
+    return { results };
+  }
+
+  private async applyOne(
+    shopId: string,
+    userId: string,
+    op: BatchOperationDto,
+  ): Promise<InventoryBatchResultDto> {
+    let outcome: { movement: InventoryMovement; duplicate: boolean };
+    try {
+      outcome = await this.ds.transaction(async (m) => {
+        // Before the item lookup: an operation recorded earlier stays a
+        // duplicate even if its item has been archived since.
+        const before = await this.findByClientOp(m, shopId, op.client_op_id);
+        if (before) return { movement: before, duplicate: true };
+        const item = await lockItem(m, shopId, op.item_id);
+        const earlier = await this.findByClientOp(m, shopId, op.client_op_id);
+        if (earlier) return { movement: earlier, duplicate: true };
+        const movement = await recordMovement(m, item, {
+          shopId,
+          userId,
+          type: op.type,
+          delta: deltaFor(op.type, op.quantity, item.quantity),
+          unitCost: op.unit_cost,
+          note: op.note,
+          clientOpId: op.client_op_id,
+          occurredAt: clampOccurredAt(op.occurred_at),
+          force: true,
+        });
+        return { movement, duplicate: false };
+      });
+    } catch (e) {
+      // Only errors that will be the same on every retry are final; anything
+      // else fails the request so the client sends the batch again.
+      if (e instanceof ApiException && e.getStatus() < 500) {
+        return {
+          client_op_id: op.client_op_id,
+          status: 'rejected',
+          error_code: e.code,
+        };
+      }
+      throw e;
+    }
+    const itemId = outcome.movement.item?.id ?? op.item_id;
+    const item = await this.inventory.getIncludingArchived(shopId, itemId);
+    return {
+      client_op_id: op.client_op_id,
+      status: outcome.duplicate ? 'duplicate' : 'applied',
+      movement: this.serialize(
+        { ...outcome.movement, item: { id: itemId } } as InventoryMovement,
+        item.name,
+      ),
+      item,
+    };
+  }
+
+  private async findByClientOp(
+    m: EntityManager,
+    shopId: string,
+    clientOpId: string | undefined,
+  ): Promise<InventoryMovement | null> {
+    if (!clientOpId) return null;
+    return m.getRepository(InventoryMovement).findOne({
+      where: { shop: { id: shopId }, clientOpId },
+      relations: { item: true },
+    });
   }
 
   /** The scanner endpoint: resolve a barcode / part number, then move. */
@@ -86,6 +192,7 @@ export class MovementsService {
       quantity: dto.quantity ?? 1,
       unit_cost: dto.unit_cost,
       note: dto.note,
+      client_op_id: dto.client_op_id,
     });
   }
 
@@ -178,6 +285,8 @@ export class MovementsService {
           ? null
           : Number(mv.unitCost),
       note: mv.note ?? null,
+      occurred_at: mv.occurredAt ? mv.occurredAt.toISOString() : null,
+      forced: mv.forced ?? false,
       created_at: mv.createdAt.toISOString(),
     };
   }

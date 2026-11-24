@@ -54,6 +54,26 @@ export class InventoryMovement {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
+  /**
+   * Generated on the device, one per operation. Unique per shop, so a retried
+   * request is recorded once.
+   */
+  @Column({ type: 'uuid', name: 'client_op_id', nullable: true })
+  clientOpId: string | null;
+
+  /** When the clerk did it, by the device clock. Null for online movements. */
+  @Column({
+    type: 'timestamptz',
+    precision: 3,
+    name: 'occurred_at',
+    nullable: true,
+  })
+  occurredAt: Date | null;
+
+  /** Applied although stock was insufficient; stock was clamped to 0. */
+  @Column({ type: 'boolean', default: false })
+  forced: boolean;
+
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'created_by_user_id' })
   createdBy: User | null;

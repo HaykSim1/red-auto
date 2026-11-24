@@ -1140,12 +1140,85 @@ export class InventoryMovementDto {
     | number
     | null;
   @ApiPropertyOptional({ type: String, nullable: true }) note: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      'When it was made by the device clock; null for a movement recorded online.',
+  })
+  occurred_at: string | null;
+  @ApiProperty({
+    description:
+      'True when applied although stock was insufficient (stock was set to 0 and the item flagged for a recount).',
+  })
+  forced: boolean;
   @ApiProperty() created_at: string;
 }
 
 export class InventoryMovementResultDto {
   @ApiProperty({ type: InventoryMovementDto }) movement: InventoryMovementDto;
   @ApiProperty({ type: InventoryItemDto }) item: InventoryItemDto;
+}
+
+export class InventoryBatchResultDto {
+  @ApiProperty({ format: 'uuid' }) client_op_id: string;
+  @ApiProperty({ enum: ['applied', 'duplicate', 'rejected'] })
+  status: 'applied' | 'duplicate' | 'rejected';
+  @ApiPropertyOptional({ type: InventoryMovementDto })
+  movement?: InventoryMovementDto;
+  @ApiPropertyOptional({ type: InventoryItemDto }) item?: InventoryItemDto;
+  @ApiPropertyOptional({
+    description:
+      'Set when `status` is `rejected`: the operation can never succeed.',
+  })
+  error_code?: string;
+}
+
+export class InventoryBatchResponseDto {
+  @ApiProperty({ type: [InventoryBatchResultDto] })
+  results: InventoryBatchResultDto[];
+}
+
+export class InventoryIndexItemDto {
+  @ApiProperty() id: string;
+  @ApiProperty({ enum: ['draft', 'active', 'archived'] })
+  status: 'draft' | 'active' | 'archived';
+  @ApiProperty() name: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_hy: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) name_en: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) brand: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) part_number:
+    | string
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  part_number_normalized: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) barcode: string | null;
+  @ApiProperty() quantity: number;
+  @ApiPropertyOptional({ type: Number, nullable: true }) price_amount:
+    | number
+    | null;
+  @ApiProperty() price_currency: string;
+  @ApiPropertyOptional({ type: Number, nullable: true }) cost_amount:
+    | number
+    | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) shelf_location:
+    | string
+    | null;
+  @ApiProperty({ type: [String] }) needs_review: string[];
+  @ApiProperty() updated_at: string;
+}
+
+export class InventoryIndexResponseDto {
+  @ApiProperty({ type: [InventoryIndexItemDto] })
+  items: InventoryIndexItemDto[];
+  @ApiPropertyOptional({ type: String, nullable: true }) next_cursor:
+    | string
+    | null;
+  @ApiProperty({
+    description:
+      'Pass as `updated_since` on the next sync. Taken from the first page of a sync, not the last.',
+  })
+  server_time: string;
 }
 
 export class InventoryMovementListResponseDto {

@@ -23,6 +23,8 @@ import {
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
+  InventoryBatchResponseDto,
+  InventoryIndexResponseDto,
   InventoryItemDto,
   InventoryItemListResponseDto,
   InventoryItemLookupResponseDto,
@@ -38,8 +40,10 @@ import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { CreateRecognitionDto } from './dto/create-recognition.dto';
 import { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto';
 import {
+  BatchMovementsDto,
   CreateMovementByCodeDto,
   CreateMovementDto,
+  ItemIndexQueryDto,
   LookupItemsQueryDto,
   UpdateMovementDto,
 } from './dto/movement.dto';
@@ -99,6 +103,17 @@ export class InventoryController {
   @ApiOkResponse({ type: InventoryStatsDto })
   stats(@CurrentUser() u: JwtUserPayload) {
     return this.inventory.stats(u.sub);
+  }
+
+  // Declared before items/:id so "index" is not parsed as an id.
+  @Get('items/index')
+  @ApiOperation({
+    summary:
+      'Compact list of all my items (archived included) for offline lookup; supports delta sync',
+  })
+  @ApiOkResponse({ type: InventoryIndexResponseDto })
+  itemIndex(@CurrentUser() u: JwtUserPayload, @Query() q: ItemIndexQueryDto) {
+    return this.inventory.index(u.sub, q);
   }
 
   // Declared before items/:id so "lookup" is not parsed as an id.
@@ -204,6 +219,20 @@ export class InventoryController {
     @Body() dto: CreateMovementByCodeDto,
   ) {
     return this.movements.createByCode(u.sub, u.sub, dto);
+  }
+
+  @Post('movements/batch')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Apply sell / receive operations made offline, in order; idempotent per client_op_id',
+  })
+  @ApiOkResponse({ type: InventoryBatchResponseDto })
+  applyMovementBatch(
+    @CurrentUser() u: JwtUserPayload,
+    @Body() dto: BatchMovementsDto,
+  ) {
+    return this.movements.applyBatch(u.sub, u.sub, dto.operations);
   }
 
   @Patch('movements/:id')
